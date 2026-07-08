@@ -1,0 +1,12 @@
+{
+  "name": "標準地調査 毎木記録",
+  "short_name": "毎木記録",
+  "description": "林業の標準地調査で2cm刻みの径級・樹種・伐倒区分を記録するアプリ",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f4f6f4",
+  "theme_color": "#2d5a3d",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

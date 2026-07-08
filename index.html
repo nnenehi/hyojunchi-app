@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2d5a3d">
+<link rel="manifest" href="manifest.json">
+<title>標準地調査 毎木記録</title>
+<style>
+  :root {
+    --green: #2d5a3d;
+    --green-light: #3d7a52;
+    --red: #b33a3a;
+    --bg: #f4f6f4;
+    --card: #ffffff;
+    --border: #d8ded9;
+    --text: #22302a;
+    --muted: #6b7a70;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+    background: var(--bg); color: var(--text);
+    padding-bottom: 70px;
+  }
+  header {
+    background: var(--green); color: #fff;
+    padding: 10px 12px; position: sticky; top: 0; z-index: 20;
+  }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  #surveyLabel { font-size: 12px; opacity: .9; margin-top: 2px; word-break: break-all; }
+
+  /* タブバー */
+  nav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
+    display: flex; background: #fff; border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  nav button {
+    flex: 1; padding: 10px 0 8px; border: none; background: none;
+    font-size: 12px; color: var(--muted); cursor: pointer;
+  }
+  nav button.active { color: var(--green); font-weight: 700; border-top: 3px solid var(--green); margin-top: -1px; }
+
+  .tab { display: none; padding: 10px; }
+  .tab.active { display: block; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px; margin-bottom: 10px;
+  }
+  .card h2 { font-size: 14px; margin: 0 0 8px; color: var(--green); }
+
+  label.fld { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 3px; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%; padding: 10px; font-size: 16px;
+    border: 1px solid var(--border); border-radius: 8px; background: #fff;
+  }
+
+  .btn {
+    display: inline-block; padding: 12px 16px; border: none; border-radius: 8px;
+    font-size: 15px; font-weight: 600; cursor: pointer; background: var(--green); color: #fff;
+  }
+  .btn.full { width: 100%; margin-top: 10px; }
+  .btn.gray { background: #8a958d; }
+  .btn.red { background: var(--red); }
+  .btn.small { padding: 7px 12px; font-size: 13px; }
+  .btn.outline { background: #fff; color: var(--green); border: 1.5px solid var(--green); }
+
+  /* 樹種チップ */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    padding: 10px 14px; border-radius: 20px; border: 1.5px solid var(--border);
+    background: #fff; font-size: 15px; cursor: pointer;
+  }
+  .chip.sel { background: var(--green); color: #fff; border-color: var(--green); font-weight: 700; }
+
+  /* 伐倒トグル */
+  .seg { display: flex; border-radius: 10px; overflow: hidden; border: 1.5px solid var(--border); margin-top: 8px; }
+  .seg button {
+    flex: 1; padding: 14px 0; font-size: 17px; font-weight: 700;
+    border: none; background: #fff; color: var(--muted); cursor: pointer;
+  }
+  .seg button.keep.sel { background: var(--green); color: #fff; }
+  .seg button.cut.sel { background: var(--red); color: #fff; }
+
+  /* 径級グリッド */
+  .diaGrid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; margin-top: 10px; }
+  .diaBtn {
+    position: relative; padding: 15px 0; font-size: 18px; font-weight: 700;
+    border: 1.5px solid var(--border); border-radius: 10px; background: #fff;
+    color: var(--text); cursor: pointer;
+  }
+  .diaBtn:active { background: #e2ece5; }
+  .diaBtn .cnt {
+    position: absolute; top: 2px; font-size: 10px; font-weight: 600;
+    color: #fff; border-radius: 8px; padding: 1px 5px; min-width: 14px;
+  }
+  .diaBtn .cnt.k { left: 3px; background: var(--green-light); }
+  .diaBtn .cnt.c { right: 3px; background: var(--red); }
+  .customRow { display: flex; gap: 8px; margin-top: 8px; }
+  .customRow input { flex: 1; }
+
+  /* トースト */
+  #toast {
+    position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%);
+    background: rgba(30,45,36,.94); color: #fff; padding: 10px 18px;
+    border-radius: 24px; font-size: 14px; z-index: 50; display: none; white-space: nowrap;
+  }
+
+  /* 集計テーブル */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { border: 1px solid var(--border); padding: 7px 4px; text-align: center; }
+  th { background: #e8efe9; font-weight: 600; }
+  td.sp { text-align: left; padding-left: 8px; font-weight: 600; }
+  tr.total td { background: #f0f4f0; font-weight: 700; }
+  .rate { color: var(--red); font-weight: 700; }
+
+  /* ミニ集計バー */
+  #miniSummary {
+    display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 2px; font-size: 12px;
+  }
+  #miniSummary .ms {
+    flex-shrink: 0; background: #fff; border: 1px solid var(--border);
+    border-radius: 8px; padding: 5px 9px; white-space: nowrap;
+  }
+  #miniSummary .ms b { color: var(--green); }
+
+  /* 記録一覧 */
+  .rec {
+    display: flex; align-items: center; gap: 8px;
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    padding: 9px 10px; margin-bottom: 6px; cursor: pointer;
+  }
+  .rec .no { color: var(--muted); font-size: 12px; width: 30px; }
+  .rec .dia { font-size: 18px; font-weight: 700; width: 58px; }
+  .rec .sp { flex: 1; font-size: 14px; }
+  .rec .memo { font-size: 11px; color: var(--muted); max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 12px; color: #fff; }
+  .badge.keep { background: var(--green); }
+  .badge.cut { background: var(--red); }
+
+  /* モーダル */
+  #overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 60;
+    align-items: flex-end;
+  }
+  #overlay.open { display: flex; }
+  #modal {
+    background: #fff; width: 100%; border-radius: 16px 16px 0 0; padding: 16px;
+    max-height: 85vh; overflow-y: auto;
+  }
+  #modal h3 { margin: 0 0 10px; font-size: 16px; color: var(--green); }
+  .modalBtns { display: flex; gap: 8px; margin-top: 14px; }
+  .modalBtns .btn { flex: 1; }
+
+  .surveyItem {
+    display: flex; align-items: center; gap: 8px; padding: 9px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .surveyItem .info { flex: 1; font-size: 13px; }
+  .surveyItem .info small { color: var(--muted); }
+  .surveyItem.cur .info { color: var(--green); font-weight: 700; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+  .empty { text-align: center; color: var(--muted); padding: 30px 0; font-size: 14px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>標準地調査 毎木記録</h1>
+  <div id="surveyLabel">調査地未設定 — 「調査地」タブから作成してください</div>
+</header>
+
+<!-- ══════ 記録タブ ══════ -->
+<div class="tab active" id="tab-record">
+  <div id="miniSummary"></div>
+
+  <div class="card">
+    <h2>樹種</h2>
+    <div class="chips" id="speciesChips"></div>
+    <div class="seg">
+      <button class="keep sel" id="segKeep" onclick="setCut(false)">残す</button>
+      <button class="cut" id="segCut" onclick="setCut(true)">伐倒</button>
+    </div>
+    <label class="fld">備考（任意・次の1本に付きます）</label>
+    <input type="text" id="memoInput" placeholder="例: 二又、曲がり、枯損">
+  </div>
+
+  <div class="card">
+    <h2>径級をタップして記録（cm・2cm刻み）</h2>
+    <div class="diaGrid" id="diaGrid"></div>
+    <div class="customRow">
+      <input type="number" id="customDia" step="2" min="2" placeholder="62以上・その他の径級">
+      <button class="btn" onclick="addCustom()">記録</button>
+    </div>
+    <button class="btn gray full" onclick="undoLast()">↩ 直前の記録を取り消す</button>
+  </div>
+</div>
+
+<!-- ══════ 集計タブ ══════ -->
+<div class="tab" id="tab-summary">
+  <div class="card">
+    <h2>樹種別集計（本数間伐率）</h2>
+    <div id="summaryTable"></div>
+  </div>
+  <div class="card">
+    <h2>径級別分布（残す / 伐倒）</h2>
+    <div id="distTable" style="overflow-x:auto;"></div>
+  </div>
+</div>
+
+<!-- ══════ 一覧タブ ══════ -->
+<div class="tab" id="tab-list">
+  <div class="card" style="padding:8px 12px;">
+    <span style="font-size:13px;color:var(--muted);">タップで修正・削除できます</span>
+  </div>
+  <div id="recList"></div>
+</div>
+
+<!-- ══════ 調査地タブ ══════ -->
+<div class="tab" id="tab-survey">
+  <div class="card">
+    <h2>調査地情報</h2>
+    <label class="fld">山林名</label>
+    <input type="text" id="fYama" placeholder="例: ○○山林">
+    <label class="fld">林班・小班</label>
+    <input type="text" id="fRinpan" placeholder="例: 12林班 は小班">
+    <label class="fld">地点（標準地番号など）</label>
+    <input type="text" id="fChiten" placeholder="例: 標準地1（尾根側）">
+    <button class="btn full" onclick="createSurvey()">＋ 新しい標準地を作成して開始</button>
+    <button class="btn outline full" onclick="updateMeta()">現在の標準地の情報を上書き修正</button>
+  </div>
+
+  <div class="card">
+    <h2>保存済みの標準地（切り替え）</h2>
+    <div id="surveyList"></div>
+    <p class="hint">大面積施業地では地点ごとに標準地を作成し、ここで切り替えて記録します。データは端末内に自動保存され、電波がなくても消えません。</p>
+  </div>
+
+  <div class="card">
+    <h2>データ出力・バックアップ</h2>
+    <button class="btn full" onclick="exportCSV(false)">現在の標準地をCSV出力</button>
+    <button class="btn full" onclick="exportCSV(true)">全標準地をまとめてCSV出力</button>
+    <button class="btn outline full" onclick="exportJSON()">全データをバックアップ（JSON）</button>
+    <label class="fld" style="margin-top:12px;">バックアップ（JSON）から復元</label>
+    <input type="file" id="importFile" accept=".json" onchange="importJSON(this)">
+    <p class="hint">CSVはExcelでそのまま開けます（UTF-8 BOM付き）。機種変更や紛失に備え、調査後はCSVかJSONを定期的に出力してください。</p>
+  </div>
+
+  <div class="card">
+    <h2>その他の樹種を追加</h2>
+    <div class="customRow">
+      <input type="text" id="newSpecies" placeholder="例: アカエゾマツ">
+      <button class="btn" onclick="addSpecies()">追加</button>
+    </div>
+  </div>
+</div>
+
+<nav>
+  <button class="active" data-tab="record" onclick="showTab('record')">📝 記録</button>
+  <button data-tab="summary" onclick="showTab('summary')">📊 集計</button>
+  <button data-tab="list" onclick="showTab('list')">📋 一覧</button>
+  <button data-tab="survey" onclick="showTab('survey')">🌲 調査地</button>
+</nav>
+
+<div id="toast"></div>
+
+<!-- 修正モーダル -->
+<div id="overlay" onclick="if(event.target===this) closeModal()">
+  <div id="modal">
+    <h3>記録の修正</h3>
+    <label class="fld">径級（cm）</label>
+    <input type="number" id="eDia" step="2" min="2">
+    <label class="fld">樹種</label>
+    <select id="eSp"></select>
+    <label class="fld">区分</label>
+    <div class="seg">
+      <button class="keep" id="eKeep" onclick="eCut=false;refreshESeg()">残す</button>
+      <button class="cut" id="eCutBtn" onclick="eCut=true;refreshESeg()">伐倒</button>
+    </div>
+    <label class="fld">備考</label>
+    <input type="text" id="eMemo">
+    <div class="modalBtns">
+      <button class="btn red" onclick="deleteRecord()">削除</button>
+      <button class="btn gray" onclick="closeModal()">閉じる</button>
+      <button class="btn" onclick="saveEdit()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const KEY = "hyojunchi_v1";
+const BASE_SPECIES = ["トドマツ", "カラマツ", "スギ", "エゾマツ", "雑木"];
+const DIA_MIN = 4, DIA_MAX = 60;
+
+let state = load();
+let curSpecies = BASE_SPECIES[0];
+let curCut = false;
+let editId = null, eCut = false;
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && Array.isArray(s.surveys)) return s;
+  } catch (e) {}
+  return { surveys: [], activeId: null, customSpecies: [] };
+}
+function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
+function cur() { return state.surveys.find(s => s.id === state.activeId) || null; }
+function allSpecies() { return BASE_SPECIES.concat(state.customSpecies); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.display = "block";
+  clearTimeout(t._tm); t._tm = setTimeout(() => t.style.display = "none", 1600);
+}
+
+/* ───── タブ ───── */
+function showTab(name) {
+  document.querySelectorAll(".tab").forEach(el => el.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+  renderAll();
+}
+
+/* ───── 調査地 ───── */
+function createSurvey() {
+  const yama = document.getElementById("fYama").value.trim();
+  const rinpan = document.getElementById("fRinpan").value.trim();
+  const chiten = document.getElementById("fChiten").value.trim();
+  if (!yama && !rinpan && !chiten) { toast("山林名などを入力してください"); return; }
+  const s = { id: Date.now() + "" + Math.floor(Math.random() * 1000), yama, rinpan, chiten, records: [], createdAt: new Date().toISOString() };
+  state.surveys.push(s);
+  state.activeId = s.id;
+  save(); renderAll();
+  toast("標準地を作成しました");
+  showTab("record");
+}
+function updateMeta() {
+  const s = cur();
+  if (!s) { toast("先に標準地を作成してください"); return; }
+  s.yama = document.getElementById("fYama").value.trim();
+  s.rinpan = document.getElementById("fRinpan").value.trim();
+  s.chiten = document.getElementById("fChiten").value.trim();
+  save(); renderAll();
+  toast("調査地情報を更新しました");
+}
+function switchSurvey(id) {
+  state.activeId = id; save(); renderAll();
+  toast("標準地を切り替えました");
+}
+function deleteSurvey(id) {
+  const s = state.surveys.find(x => x.id === id);
+  if (!s) return;
+  if (!confirm(surveyName(s) + "\n記録 " + s.records.length + " 本を含めて削除します。よろしいですか？")) return;
+  state.surveys = state.surveys.filter(x => x.id !== id);
+  if (state.activeId === id) state.activeId = state.surveys.length ? state.surveys[state.surveys.length - 1].id : null;
+  save(); renderAll();
+}
+function surveyName(s) {
+  return [s.yama, s.rinpan, s.chiten].filter(Boolean).join(" / ") || "(名称未設定)";
+}
+
+/* ───── 樹種 ───── */
+function addSpecies() {
+  const el = document.getElementById("newSpecies");
+  const name = el.value.trim();
+  if (!name) return;
+  if (allSpecies().includes(name)) { toast("すでにあります"); return; }
+  state.customSpecies.push(name);
+  el.value = ""; save(); renderAll();
+  toast("樹種「" + name + "」を追加しました");
+}
+function setSpecies(sp) { curSpecies = sp; renderAll(); }
+function setCut(c) {
+  curCut = c;
+  document.getElementById("segKeep").classList.toggle("sel", !c);
+  document.getElementById("segCut").classList.toggle("sel", c);
+}
+
+/* ───── 記録 ───── */
+function addRecord(dia) {
+  const s = cur();
+  if (!s) { toast("先に「調査地」タブで標準地を作成してください"); showTab("survey"); return; }
+  const memoEl = document.getElementById("memoInput");
+  s.records.push({
+    id: Date.now() + "" + Math.floor(Math.random() * 1000),
+    dia: dia, sp: curSpecies, cut: curCut,
+    memo: memoEl.value.trim(), ts: new Date().toISOString()
+  });
+  memoEl.value = "";
+  save(); renderAll();
+  if (navigator.vibrate) navigator.vibrate(30);
+  toast(curSpecies + " " + dia + "cm を「" + (curCut ? "伐倒" : "残す") + "」で記録（計" + s.records.length + "本）");
+}
+function addCustom() {
+  const el = document.getElementById("customDia");
+  let d = parseFloat(el.value);
+  if (!d || d <= 0) { toast("径級を入力してください"); return; }
+  d = Math.round(d / 2) * 2;  // 2cm刻みに丸め
+  if (d < 2) d = 2;
+  el.value = "";
+  addRecord(d);
+}
+function undoLast() {
+  const s = cur();
+  if (!s || !s.records.length) { toast("取り消せる記録がありません"); return; }
+  const r = s.records.pop();
+  save(); renderAll();
+  toast(r.sp + " " + r.dia + "cm を取り消しました");
+}
+
+/* ───── 修正モーダル ───── */
+function openEdit(id) {
+  const s = cur(); if (!s) return;
+  const r = s.records.find(x => x.id === id); if (!r) return;
+  editId = id; eCut = r.cut;
+  document.getElementById("eDia").value = r.dia;
+  document.getElementById("eMemo").value = r.memo || "";
+  const sel = document.getElementById("eSp");
+  const opts = allSpecies().slice();
+  if (!opts.includes(r.sp)) opts.push(r.sp);
+  sel.innerHTML = opts.map(o => `<option ${o === r.sp ? "selected" : ""}>${esc(o)}</option>`).join("");
+  refreshESeg();
+  document.getElementById("overlay").classList.add("open");
+}
+function refreshESeg() {
+  document.getElementById("eKeep").classList.toggle("sel", !eCut);
+  document.getElementById("eCutBtn").classList.toggle("sel", eCut);
+}
+function saveEdit() {
+  const s = cur(); if (!s) return;
+  const r = s.records.find(x => x.id === editId); if (!r) return;
+  let d = parseFloat(document.getElementById("eDia").value);
+  if (!d || d <= 0) { toast("径級が正しくありません"); return; }
+  r.dia = Math.max(2, Math.round(d / 2) * 2);
+  r.sp = document.getElementById("eSp").value;
+  r.cut = eCut;
+  r.memo = document.getElementById("eMemo").value.trim();
+  save(); closeModal(); renderAll();
+  toast("修正しました");
+}
+function deleteRecord() {
+  const s = cur(); if (!s) return;
+  if (!confirm("この記録を削除しますか？")) return;
+  s.records = s.records.filter(x => x.id !== editId);
+  save(); closeModal(); renderAll();
+  toast("削除しました");
+}
+function closeModal() {
+  editId = null;
+  document.getElementById("overlay").classList.remove("open");
+}
+
+/* ───── 集計 ───── */
+function summarize(records) {
+  const m = {};
+  records.forEach(r => {
+    if (!m[r.sp]) m[r.sp] = { keep: 0, cut: 0 };
+    m[r.sp][r.cut ? "cut" : "keep"]++;
+  });
+  return m;
+}
+
+/* ───── 描画 ───── */
+function renderAll() {
+  const s = cur();
+  document.getElementById("surveyLabel").textContent =
+    s ? surveyName(s) + "（" + s.records.length + "本記録）"
+      : "調査地未設定 — 「調査地」タブから作成してください";
+
+  // 樹種チップ
+  document.getElementById("speciesChips").innerHTML =
+    allSpecies().map(sp =>
+      `<button class="chip ${sp === curSpecies ? "sel" : ""}" onclick="setSpecies('${esc(sp).replace(/'/g, "\\'")}')">${esc(sp)}</button>`
+    ).join("") +
+    `<button class="chip" onclick="showTab('survey');document.getElementById('newSpecies').focus()">＋その他</button>`;
+
+  // 径級グリッド（選択樹種の残す/伐倒 別々の本数バッジ付き）
+  const counts = {};
+  if (s) s.records.forEach(r => {
+    if (r.sp !== curSpecies) return;
+    if (!counts[r.dia]) counts[r.dia] = { keep: 0, cut: 0 };
+    counts[r.dia][r.cut ? "cut" : "keep"]++;
+  });
+  let grid = "";
+  for (let d = DIA_MIN; d <= DIA_MAX; d += 2) {
+    const c = counts[d];
+    grid += `<button class="diaBtn" onclick="addRecord(${d})">${d}` +
+      (c && c.keep ? `<span class="cnt k">${c.keep}</span>` : "") +
+      (c && c.cut ? `<span class="cnt c">${c.cut}</span>` : "") +
+      `</button>`;
+  }
+  document.getElementById("diaGrid").innerHTML = grid;
+
+  renderMini(s);
+  renderSummary(s);
+  renderDist(s);
+  renderList(s);
+  renderSurveys();
+
+  if (s && document.getElementById("tab-survey").classList.contains("active")) {
+    document.getElementById("fYama").value = s.yama || "";
+    document.getElementById("fRinpan").value = s.rinpan || "";
+    document.getElementById("fChiten").value = s.chiten || "";
+  }
+}
+
+function renderMini(s) {
+  const el = document.getElementById("miniSummary");
+  if (!s || !s.records.length) { el.innerHTML = `<span class="ms">記録なし</span>`; return; }
+  const m = summarize(s.records);
+  let tk = 0, tc = 0;
+  let html = "";
+  Object.keys(m).forEach(sp => {
+    const v = m[sp], tot = v.keep + v.cut;
+    tk += v.keep; tc += v.cut;
+    html += `<span class="ms"><b>${esc(sp)}</b> 残${v.keep}/伐${v.cut} <span class="rate">${tot ? Math.round(v.cut / tot * 1000) / 10 : 0}%</span></span>`;
+  });
+  const tot = tk + tc;
+  html = `<span class="ms"><b>全体</b> 残${tk}/伐${tc} <span class="rate">${tot ? Math.round(tc / tot * 1000) / 10 : 0}%</span></span>` + html;
+  el.innerHTML = html;
+}
+
+function renderSummary(s) {
+  const el = document.getElementById("summaryTable");
+  if (!s || !s.records.length) { el.innerHTML = `<div class="empty">まだ記録がありません</div>`; return; }
+  const m = summarize(s.records);
+  let tk = 0, tc = 0;
+  let rows = "";
+  Object.keys(m).sort((a, b) => allSpecies().indexOf(a) - allSpecies().indexOf(b)).forEach(sp => {
+    const v = m[sp], tot = v.keep + v.cut;
+    tk += v.keep; tc += v.cut;
+    rows += `<tr><td class="sp">${esc(sp)}</td><td>${v.keep}</td><td>${v.cut}</td><td>${tot}</td><td class="rate">${Math.round(v.cut / tot * 1000) / 10}%</td></tr>`;
+  });
+  const tot = tk + tc;
+  rows += `<tr class="total"><td class="sp">合計</td><td>${tk}</td><td>${tc}</td><td>${tot}</td><td class="rate">${Math.round(tc / tot * 1000) / 10}%</td></tr>`;
+  el.innerHTML = `<table><tr><th>樹種</th><th>残す<br>(本)</th><th>伐倒<br>(本)</th><th>計<br>(本)</th><th>間伐率</th></tr>${rows}</table>`;
+}
+
+function renderDist(s) {
+  const el = document.getElementById("distTable");
+  if (!s || !s.records.length) { el.innerHTML = `<div class="empty">まだ記録がありません</div>`; return; }
+  const sps = [];
+  s.records.forEach(r => { if (!sps.includes(r.sp)) sps.push(r.sp); });
+  sps.sort((a, b) => allSpecies().indexOf(a) - allSpecies().indexOf(b));
+  const dias = [...new Set(s.records.map(r => r.dia))].sort((a, b) => a - b);
+  const cell = {};
+  s.records.forEach(r => {
+    const k = r.dia + "|" + r.sp;
+    if (!cell[k]) cell[k] = { keep: 0, cut: 0 };
+    cell[k][r.cut ? "cut" : "keep"]++;
+  });
+  let html = `<table><tr><th>径級</th>${sps.map(sp => `<th>${esc(sp)}</th>`).join("")}</tr>`;
+  dias.forEach(d => {
+    html += `<tr><td class="sp">${d}cm</td>`;
+    sps.forEach(sp => {
+      const v = cell[d + "|" + sp];
+      html += `<td>${v ? `${v.keep} / <span class="rate">${v.cut}</span>` : ""}</td>`;
+    });
+    html += `</tr>`;
+  });
+  html += `</table><p class="hint">各セル: 残す本数 / <span class="rate">伐倒本数</span></p>`;
+  el.innerHTML = html;
+}
+
+function renderList(s) {
+  const el = document.getElementById("recList");
+  if (!s || !s.records.length) { el.innerHTML = `<div class="empty">まだ記録がありません</div>`; return; }
+  el.innerHTML = s.records.slice().reverse().map((r, i) => {
+    const no = s.records.length - i;
+    return `<div class="rec" onclick="openEdit('${r.id}')">
+      <span class="no">${no}</span>
+      <span class="dia">${r.dia}cm</span>
+      <span class="sp">${esc(r.sp)}</span>
+      ${r.memo ? `<span class="memo">${esc(r.memo)}</span>` : ""}
+      <span class="badge ${r.cut ? "cut" : "keep"}">${r.cut ? "伐倒" : "残す"}</span>
+    </div>`;
+  }).join("");
+}
+
+function renderSurveys() {
+  const el = document.getElementById("surveyList");
+  if (!state.surveys.length) { el.innerHTML = `<div class="empty">保存済みの標準地はありません</div>`; return; }
+  el.innerHTML = state.surveys.slice().reverse().map(s => `
+    <div class="surveyItem ${s.id === state.activeId ? "cur" : ""}">
+      <div class="info">${esc(surveyName(s))}<br><small>${s.records.length}本記録 / ${new Date(s.createdAt).toLocaleDateString("ja-JP")}</small></div>
+      ${s.id === state.activeId
+        ? `<span class="badge keep">選択中</span>`
+        : `<button class="btn small" onclick="switchSurvey('${s.id}')">切替</button>`}
+      <button class="btn small red" onclick="deleteSurvey('${s.id}')">削除</button>
+    </div>`).join("");
+}
+
+/* ───── エクスポート ───── */
+function csvEsc(v) {
+  v = String(v == null ? "" : v);
+  return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+function buildCSV(surveys) {
+  const head = "山林名,林班小班,地点,No,樹種,径級(cm),区分,備考,記録日時\n";
+  let body = "";
+  surveys.forEach(s => {
+    s.records.forEach((r, i) => {
+      body += [s.yama, s.rinpan, s.chiten, i + 1, r.sp, r.dia, r.cut ? "伐倒" : "残す", r.memo, new Date(r.ts).toLocaleString("ja-JP")].map(csvEsc).join(",") + "\n";
+    });
+  });
+  return head + body;
+}
+function download(name, content, type) {
+  // ExcelでUTF-8として開けるようCSVにはBOMを付ける
+  const data = type === "text/csv" ? "﻿" + content : content;
+  const blob = new Blob([data], { type: type + ";charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function stamp() {
+  const d = new Date();
+  return d.getFullYear() + ("0" + (d.getMonth() + 1)).slice(-2) + ("0" + d.getDate()).slice(-2);
+}
+function exportCSV(all) {
+  const targets = all ? state.surveys : (cur() ? [cur()] : []);
+  if (!targets.length || !targets.some(s => s.records.length)) { toast("出力する記録がありません"); return; }
+  const name = (all ? "標準地調査_全地点_" : "標準地調査_" + surveyName(targets[0]).replace(/[\\/:*?"<>| ]/g, "_") + "_") + stamp() + ".csv";
+  download(name, buildCSV(targets), "text/csv");
+  toast("CSVを出力しました");
+}
+function exportJSON() {
+  download("標準地調査_バックアップ_" + stamp() + ".json", JSON.stringify(state, null, 1), "application/json");
+  toast("バックアップを出力しました");
+}
+function importJSON(input) {
+  const f = input.files[0];
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const s = JSON.parse(rd.result);
+      if (!s || !Array.isArray(s.surveys)) throw 0;
+      if (!confirm("現在のデータをバックアップの内容で置き換えます。よろしいですか？")) return;
+      state = s; save(); renderAll();
+      toast("復元しました");
+    } catch (e) { toast("ファイルを読み込めませんでした"); }
+    input.value = "";
+  };
+  rd.readAsText(f);
+}
+
+/* ───── 起動 ───── */
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+renderAll();
+</script>
+</body>
+</html>
