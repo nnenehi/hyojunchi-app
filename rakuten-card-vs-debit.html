@@ -1,0 +1,547 @@
+<title>楽天カードと楽天デビット、月10万円の差</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@600;700&family=Noto+Sans+JP:wght@400;500;700&family=Roboto+Mono:wght@500;700&display=swap">
+<style>
+  :root{
+    --paper:#faf7f5;
+    --surface:#ffffff;
+    --sunk:#f3eeeb;
+    --line:#e3d9d5;
+    --hair:#cfc2bd;
+    --ink:#1d1817;
+    --muted:#6f625e;
+    --credit:#b52b34;
+    --credit-soft:#f7e6e6;
+    --debit:#146a68;
+    --debit-soft:#e0efee;
+    --warn:#8a5a12;
+  }
+  :root:not([data-theme="light"]){
+    color-scheme:light;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      color-scheme:dark;
+      --paper:#171314;
+      --surface:#211c1d;
+      --sunk:#1c1718;
+      --line:#3a3133;
+      --hair:#4d4244;
+      --ink:#f2eae8;
+      --muted:#a5948f;
+      --credit:#f0767c;
+      --credit-soft:#3a2124;
+      --debit:#5cc3b8;
+      --debit-soft:#16302f;
+      --warn:#e0b063;
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --paper:#171314;
+    --surface:#211c1d;
+    --sunk:#1c1718;
+    --line:#3a3133;
+    --hair:#4d4244;
+    --ink:#f2eae8;
+    --muted:#a5948f;
+    --credit:#f0767c;
+    --credit-soft:#3a2124;
+    --debit:#5cc3b8;
+    --debit-soft:#16302f;
+    --warn:#e0b063;
+  }
+
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"Noto Sans JP","Hiragino Sans","Yu Gothic UI",sans-serif;
+    font-size:15px;
+    line-height:1.85;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{
+    max-width:860px;
+    margin:0 auto;
+    padding-inline:20px;
+    padding-block:44px 72px;
+  }
+  h1,h2,h3{font-family:"Zen Old Mincho",serif;font-weight:700;text-wrap:balance;margin:0;}
+  h1{font-size:clamp(28px,6vw,40px);line-height:1.35;letter-spacing:.01em;}
+  h2{font-size:20px;line-height:1.5;}
+  h3{font-size:15px;line-height:1.6;}
+  p{margin:0;}
+  .num{font-family:"Roboto Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums;font-weight:500;}
+
+  .eyebrow{
+    font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+    color:var(--muted);font-weight:700;
+  }
+  .lede{color:var(--muted);font-size:15px;}
+
+  header.masthead{display:flex;flex-direction:column;gap:14px;
+    border-bottom:2px solid var(--ink);padding-bottom:22px;}
+  .meta{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12px;color:var(--muted);}
+  .meta span{white-space:nowrap;}
+
+  section{margin-top:46px;display:flex;flex-direction:column;gap:18px;}
+  .sec-head{display:flex;flex-direction:column;gap:6px;
+    border-bottom:1px solid var(--hair);padding-bottom:10px;}
+
+  /* 結論 */
+  .verdict{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-top:4px solid var(--ink);
+    padding:24px 22px;
+    display:flex;flex-direction:column;gap:16px;
+    margin-top:26px;
+  }
+  .verdict .big{font-family:"Zen Old Mincho",serif;font-size:clamp(21px,4.6vw,27px);line-height:1.55;font-weight:700;}
+  .verdict .big em{font-style:normal;border-bottom:3px solid var(--credit);padding-bottom:1px;}
+  .verdict ul{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:7px;font-size:14px;}
+  .verdict li::marker{color:var(--hair);}
+
+  /* 台帳テーブル */
+  .ledger{width:100%;border-collapse:collapse;font-size:14px;}
+  .ledger caption{text-align:left;font-size:12px;color:var(--muted);padding-bottom:8px;}
+  .ledger th,.ledger td{padding:10px 8px;border-bottom:1px solid var(--line);vertical-align:top;text-align:left;}
+  .ledger thead th{
+    font-size:11px;letter-spacing:.1em;color:var(--muted);font-weight:700;
+    border-bottom:1px solid var(--hair);white-space:nowrap;
+  }
+  .ledger tbody th{font-weight:500;color:var(--ink);}
+  .ledger .c-credit{color:var(--credit);font-weight:700;}
+  .ledger .c-debit{color:var(--debit);font-weight:700;}
+  .ledger td.n{text-align:right;white-space:nowrap;}
+  .ledger tfoot td,.ledger tfoot th{border-bottom:none;border-top:2px solid var(--ink);font-weight:700;padding-top:12px;}
+  .scroll{overflow-x:auto;}
+  .sub{display:block;font-size:11.5px;color:var(--muted);line-height:1.6;font-weight:400;}
+
+  /* 4ケース */
+  .cases{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:var(--line);border:1px solid var(--line);}
+  @media (max-width:520px){.cases{grid-template-columns:1fr;}}
+  .case{background:var(--surface);padding:16px 15px;display:flex;flex-direction:column;gap:9px;}
+  .case .tag{font-size:11px;letter-spacing:.12em;color:var(--muted);font-weight:700;}
+  .case .mix{font-size:12.5px;color:var(--muted);line-height:1.7;}
+  .case .result{font-family:"Roboto Mono",monospace;font-size:19px;font-weight:700;font-variant-numeric:tabular-nums;}
+  .case .result.credit{color:var(--credit);}
+  .case .result.debit{color:var(--debit);}
+  .case .result.tie{color:var(--muted);}
+  .case .who{font-size:12px;font-weight:700;letter-spacing:.04em;}
+
+  /* シミュレーター */
+  .sim{background:var(--surface);border:1px solid var(--line);padding:22px 20px;display:flex;flex-direction:column;gap:20px;}
+  .rows{display:flex;flex-direction:column;gap:0;}
+  .row{
+    display:grid;grid-template-columns:1fr 118px 82px 82px;gap:10px;align-items:center;
+    padding:9px 0;border-bottom:1px solid var(--line);
+  }
+  .row.head{border-bottom:1px solid var(--hair);padding-bottom:7px;}
+  .row.head div{font-size:10.5px;letter-spacing:.1em;color:var(--muted);font-weight:700;text-align:right;}
+  .row.head div:first-child{text-align:left;}
+  .row label{font-size:13.5px;line-height:1.5;}
+  .row label .rate{display:block;font-size:11px;color:var(--muted);}
+  .row input[type=number]{
+    width:100%;padding:7px 9px;font-size:15px;text-align:right;
+    font-family:"Roboto Mono",monospace;font-variant-numeric:tabular-nums;
+    background:var(--sunk);color:var(--ink);
+    border:1px solid var(--line);border-radius:4px;
+  }
+  .row input[type=number]:focus-visible{outline:2px solid var(--ink);outline-offset:1px;}
+  .row .pt{text-align:right;font-family:"Roboto Mono",monospace;font-size:14px;font-variant-numeric:tabular-nums;}
+  .row .pt.credit{color:var(--credit);}
+  .row .pt.debit{color:var(--debit);}
+  .row.total{border-bottom:none;border-top:2px solid var(--ink);padding-top:13px;font-weight:700;}
+  .row.total .pt{font-size:16px;font-weight:700;}
+  #sumNote{font-size:12px;color:var(--muted);text-align:right;}
+  #sumNote.off{color:var(--warn);font-weight:700;}
+
+  .opts{display:flex;flex-wrap:wrap;gap:14px;align-items:center;font-size:13px;color:var(--muted);}
+  .opts label{display:flex;gap:7px;align-items:center;cursor:pointer;}
+  .opts input{width:16px;height:16px;accent-color:var(--credit);}
+
+  .outcome{background:var(--sunk);border:1px solid var(--line);padding:18px 16px;display:flex;flex-direction:column;gap:12px;}
+  .outcome .headline{font-family:"Zen Old Mincho",serif;font-size:19px;font-weight:700;line-height:1.5;}
+  .bar{height:26px;background:var(--surface);border:1px solid var(--line);position:relative;overflow:hidden;}
+  .bar .mid{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--hair);}
+  .bar .fill{position:absolute;top:0;bottom:0;transition:left .25s ease,width .25s ease,background .25s ease;}
+  .barlabels{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);letter-spacing:.06em;}
+
+  /* 使い分け */
+  .split{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px;}
+  .pane{border:1px solid var(--line);background:var(--surface);padding:16px 15px;display:flex;flex-direction:column;gap:10px;}
+  .pane.credit{border-top:4px solid var(--credit);}
+  .pane.debit{border-top:4px solid var(--debit);}
+  .pane h3{letter-spacing:.02em;}
+  .pane ul{margin:0;padding-left:1.05em;font-size:13.5px;display:flex;flex-direction:column;gap:6px;}
+  .pane.credit li::marker{color:var(--credit);}
+  .pane.debit li::marker{color:var(--debit);}
+
+  .rule{
+    border-left:3px solid var(--ink);padding:12px 0 12px 16px;
+    background:linear-gradient(90deg,var(--sunk),transparent 70%);
+    font-size:14.5px;
+  }
+  .rule .formula{font-family:"Roboto Mono",monospace;font-size:15px;font-weight:700;display:block;margin-top:6px;}
+
+  .notes{font-size:12.5px;color:var(--muted);line-height:1.85;display:flex;flex-direction:column;gap:8px;}
+  .notes ol{margin:0;padding-left:1.4em;display:flex;flex-direction:column;gap:6px;}
+  .notes a{color:var(--muted);text-underline-offset:2px;}
+  .notes a:hover{color:var(--ink);}
+
+  @media (max-width:560px){
+    .row{grid-template-columns:1fr 96px;grid-template-areas:"label input" "credit debit";row-gap:4px;}
+    .row label{grid-area:label;}
+    .row .in{grid-area:input;}
+    .row .pt.credit{grid-area:credit;text-align:left;}
+    .row .pt.debit{grid-area:debit;}
+    .row.head{display:none;}
+    .row .pt::before{content:attr(data-l) " ";font-family:"Noto Sans JP",sans-serif;font-size:10.5px;letter-spacing:.08em;color:var(--muted);}
+  }
+  @media (prefers-reduced-motion: reduce){*{transition:none!important;}}
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="eyebrow">月10万円・年120万円の損得計算</div>
+  <h1>楽天カードと楽天デビット、<br>どちらが得か</h1>
+  <p class="lede">楽天カード（一般・年会費無料）と楽天銀行デビットカード（Visa／Mastercard・年会費無料）で、毎月10万円を支払った場合の比較。国際ブランドによる還元率の差はないため、ブランドは問わない前提。楽天証券のクレカ積立は計算に含めない。</p>
+  <div class="meta">
+    <span>試算日：2026年9月13日</span>
+    <span>1ポイント＝1円で換算</span>
+    <span>年会費：両方とも永年無料</span>
+  </div>
+</header>
+
+<div class="verdict">
+  <div class="eyebrow">結論</div>
+  <p class="big">同じ店で使う限り、<em>両者は完全に引き分け</em>。差が出るのは「公共料金」と「楽天市場」の2か所だけ。</p>
+  <ul>
+    <li>一般の店（スーパー・コンビニ・外食・ドラッグストア等）はどちらも <strong>1.0%</strong>。100円未満切り捨ての条件まで同じで、年12,000ポイントで並ぶ。</li>
+    <li><strong>電気・ガス・水道・税金</strong>は楽天カードだけが 0.2% に下げられている（2021年6月〜）。デビットは 1.0% のまま。ここはデビットの一方的な勝ち。</li>
+    <li><strong>楽天市場</strong>は楽天カードが 3.0%、デビットは 2.0%。SPU のカード分（+2倍）はデビットでは付かない。</li>
+    <li>後払いの資金繰りも金額換算できる。楽天カードは平均42日の支払い猶予があり、その間の預金利息が <strong>年440〜530円</strong>ぶんクレジット側に上乗せされる。</li>
+    <li>現実的な内訳（一般6万／公共料金1.5万／楽天市場1.5万／その他1万）だと、差は <strong>年360ポイント＋利息500円 ≒ 年900円</strong> 程度のクレジット優位。ほぼ誤差。</li>
+  </ul>
+</div>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">STEP 1</div>
+    <h2>還元率を利用先ごとに確定させる</h2>
+    <p class="lede">「どちらも1%」で終わらせると答えを間違える。効くのは基本還元率ではなく、利用先ごとの例外規定。</p>
+  </div>
+  <div class="scroll">
+  <table class="ledger">
+    <caption>楽天ポイント進呈ルール（2026年9月時点）</caption>
+    <thead>
+      <tr>
+        <th>利用先</th>
+        <th class="c-credit">楽天カード</th>
+        <th class="c-debit">楽天銀行デビット</th>
+        <th>差</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <th>一般加盟店<span class="sub">スーパー・コンビニ・外食・衣料・ドラッグストア・ガソリン等</span></th>
+        <td>1.0%<span class="sub">税込100円につき1P／1回の決済ごとに端数切り捨て</span></td>
+        <td>1.0%<span class="sub">100円につき1P／同じく1回ごとに端数切り捨て</span></td>
+        <td class="n">±0</td>
+      </tr>
+      <tr>
+        <th>電気・ガス・水道<span class="sub">大手インフラ事業者</span></th>
+        <td>0.2%<span class="sub">500円につき1P。2021年6月から引き下げ</span></td>
+        <td>1.0%<span class="sub">引き下げの対象外</span></td>
+        <td class="n c-debit">+0.8</td>
+      </tr>
+      <tr>
+        <th>税金・国民年金<span class="sub">国税・地方税・公金支払い</span></th>
+        <td>0.2%</td>
+        <td>1.0%</td>
+        <td class="n c-debit">+0.8</td>
+      </tr>
+      <tr>
+        <th>楽天市場</th>
+        <td>3.0%<span class="sub">通常1倍＋楽天カード決済2倍（SPU）</span></td>
+        <td>2.0%<span class="sub">通常1倍＋デビット自身の1%。SPUのカード分は付かない</span></td>
+        <td class="n c-credit">+1.0</td>
+      </tr>
+      <tr>
+        <th>電子マネーチャージ<span class="sub">楽天Edy等</span></th>
+        <td>0.5%<span class="sub">200円につき1P</span></td>
+        <td>0%<span class="sub">進呈対象外</span></td>
+        <td class="n c-credit">+0.5</td>
+      </tr>
+      <tr>
+        <th>金券・宝くじ・ゲーム内コイン</th>
+        <td>0%〜<span class="sub">多くが対象外</span></td>
+        <td>0%<span class="sub">対象外と明記</span></td>
+        <td class="n">±0</td>
+      </tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="notes">端数切り捨ての条件が同じ点は重要。「クレジットは月合計で計算されるから端数で得」という話は現在の楽天カードには当てはまらず、どちらも1回の決済ごとに100円未満を切り捨てる。平均単価3,000円で月33回なら、切り捨ての取りこぼしは両者とも月1,500円ぶん前後（実効0.98%）で相殺される。</p>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">STEP 2</div>
+    <h2>月10万円の内訳を4パターンで走らせる</h2>
+    <p class="lede">同じ10万円でも、内訳次第で勝者が入れ替わる。年間の獲得ポイント差（利息を除く）。</p>
+  </div>
+  <div class="cases">
+    <div class="case">
+      <div class="tag">A ／ 全額を一般の店で</div>
+      <div class="mix">一般 100,000円</div>
+      <div class="result tie">12,000P ＝ 12,000P</div>
+      <div class="who" style="color:var(--muted)">完全に引き分け</div>
+    </div>
+    <div class="case">
+      <div class="tag">B ／ 標準的な内訳</div>
+      <div class="mix">一般 60,000／公共 15,000<br>楽天市場 15,000／その他 10,000</div>
+      <div class="result credit">＋360P ／ 年</div>
+      <div class="who" style="color:var(--credit)">クレジットが優勢（月30円）</div>
+    </div>
+    <div class="case">
+      <div class="tag">C ／ 公共料金が多い</div>
+      <div class="mix">一般 55,000／公共 30,000<br>楽天市場 5,000／その他 10,000</div>
+      <div class="result debit">＋2,280P ／ 年</div>
+      <div class="who" style="color:var(--debit)">デビットが明確に有利</div>
+    </div>
+    <div class="case">
+      <div class="tag">D ／ 楽天市場が多い</div>
+      <div class="mix">一般 50,000／公共 10,000<br>楽天市場 30,000／その他 10,000</div>
+      <div class="result credit">＋2,640P ／ 年</div>
+      <div class="who" style="color:var(--credit)">クレジットが明確に有利</div>
+    </div>
+  </div>
+  <div class="rule">
+    分岐点はきれいな一次式になる。月の公共料金・税金を <span class="num">U</span>、楽天市場の利用額を <span class="num">M</span> とすると、
+    <span class="formula">U &gt; 1.25 × M ならデビットが得</span>
+    利息まで含めるなら <span class="num">U &gt; 1.25 × M ＋ 5,500円</span>。楽天市場を使わない人でも、公共料金が月5,500円を超えて初めてデビットが逆転する。
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">STEP 3</div>
+    <h2>自分の内訳で計算する</h2>
+    <p class="lede">合計が10万円になるように数字を入れ替える。年間の差額が即座に出る。</p>
+  </div>
+  <div class="sim">
+    <div class="rows">
+      <div class="row head">
+        <div>月の利用先と金額</div><div>金額（円）</div><div>クレジット</div><div>デビット</div>
+      </div>
+      <div class="row">
+        <label for="v0">一般加盟店<span class="rate">1.0% ／ 1.0%</span></label>
+        <div class="in"><input type="number" id="v0" value="60000" min="0" step="1000" inputmode="numeric"></div>
+        <div class="pt credit" id="c0" data-l="クレ"></div>
+        <div class="pt debit" id="d0" data-l="デビ"></div>
+      </div>
+      <div class="row">
+        <label for="v1">公共料金・税金<span class="rate">0.2% ／ 1.0%</span></label>
+        <div class="in"><input type="number" id="v1" value="15000" min="0" step="1000" inputmode="numeric"></div>
+        <div class="pt credit" id="c1" data-l="クレ"></div>
+        <div class="pt debit" id="d1" data-l="デビ"></div>
+      </div>
+      <div class="row">
+        <label for="v2">楽天市場<span class="rate">3.0% ／ 2.0%</span></label>
+        <div class="in"><input type="number" id="v2" value="15000" min="0" step="1000" inputmode="numeric"></div>
+        <div class="pt credit" id="c2" data-l="クレ"></div>
+        <div class="pt debit" id="d2" data-l="デビ"></div>
+      </div>
+      <div class="row">
+        <label for="v3">通信・保険・サブスク等<span class="rate">1.0% ／ 1.0%</span></label>
+        <div class="in"><input type="number" id="v3" value="10000" min="0" step="1000" inputmode="numeric"></div>
+        <div class="pt credit" id="c3" data-l="クレ"></div>
+        <div class="pt debit" id="d3" data-l="デビ"></div>
+      </div>
+      <div class="row">
+        <label for="v4">電子マネーチャージ<span class="rate">0.5% ／ 0%</span></label>
+        <div class="in"><input type="number" id="v4" value="0" min="0" step="1000" inputmode="numeric"></div>
+        <div class="pt credit" id="c4" data-l="クレ"></div>
+        <div class="pt debit" id="d4" data-l="デビ"></div>
+      </div>
+      <div class="row total">
+        <label id="totalLabel">合計 ／ 月の獲得ポイント</label>
+        <div class="in num" id="sum" style="text-align:right"></div>
+        <div class="pt credit" id="cT" data-l="クレ"></div>
+        <div class="pt debit" id="dT" data-l="デビ"></div>
+      </div>
+    </div>
+    <div id="sumNote"></div>
+    <div class="opts">
+      <label for="opt"><input type="checkbox" id="opt" checked>支払い猶予（平均42日）の預金利息を含める</label>
+      <span id="floatNote"></span>
+    </div>
+    <div class="outcome">
+      <div class="headline" id="headline"></div>
+      <div class="bar"><div class="mid"></div><div class="fill" id="fill"></div></div>
+      <div class="barlabels"><span>デビット有利 −6,000円</span><span>互角</span><span>+6,000円 クレジット有利</span></div>
+      <p class="notes" id="detail"></p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">STEP 4</div>
+    <h2>ポイント以外で効いてくるもの</h2>
+    <p class="lede">年間の差が1,000円前後にしかならない以上、判断はここで決まる。</p>
+  </div>
+  <div class="split">
+    <div class="pane credit">
+      <h3 style="color:var(--credit)">楽天カードにしかないもの</h3>
+      <ul>
+        <li><strong>平均42日の支払い猶予。</strong>月末締め・翌月27日払い。常時13.8万円が手元に残り、口座残高を気にせず使える。</li>
+        <li><strong>海外旅行傷害保険（利用付帯）。</strong>死亡・後遺障害 最高2,000万円、傷害・疾病治療 各200万円。</li>
+        <li><strong>残高不足で決済が止まらない。</strong>高額の突発出費に強い。</li>
+        <li><strong>クレジットヒストリーが積み上がる。</strong>住宅ローンや車のローンを組むときに効く。デビットでは一切育たない。</li>
+        <li><strong>使える場所が広い。</strong>ETC、月極、一部のサブスク、宿泊のデポジットなどデビット非対応の場面をカバー。</li>
+      </ul>
+    </div>
+    <div class="pane debit">
+      <h3 style="color:var(--debit)">楽天デビットにしかないもの</h3>
+      <ul>
+        <li><strong>公共料金・税金が1%のまま。</strong>楽天カードが0.2%に下げた領域で唯一1%を維持している。</li>
+        <li><strong>使いすぎない。</strong>口座残高が上限。リボ・分割・キャッシングの手数料リスクがゼロ。</li>
+        <li><strong>審査なしで持てる。</strong>楽天銀行の口座があれば発行できる。</li>
+        <li><strong>使った瞬間に口座から引かれ通知が来る。</strong>家計の把握が翌月にずれない。</li>
+      </ul>
+    </div>
+  </div>
+  <p class="notes">デビット側の実務上の注意：ガソリンスタンドでの給油は、その時点で普通預金残高が10,000円以上ないと決済できない。1日あたりの利用限度額も初期設定されているため、高額の買い物前には楽天銀行アプリで上限を上げておく必要がある。</p>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">最適解</div>
+    <h2>どちらか1枚を選ばない</h2>
+  </div>
+  <p>両方とも年会費無料で、両方持つコストはゼロ。還元率の差が「公共料金」と「楽天市場」の2か所にしか存在しない以上、その2か所だけ使い分ければ上限を取れる。</p>
+  <div class="scroll">
+  <table class="ledger">
+    <caption>標準的な内訳（一般6万／公共1.5万／楽天市場1.5万／その他1万）での年間獲得</caption>
+    <thead>
+      <tr><th>運用</th><th class="n">年間ポイント</th><th class="n">利息</th><th class="n">合計</th></tr>
+    </thead>
+    <tbody>
+      <tr><th>楽天カードに全部寄せる</th><td class="n">14,160P</td><td class="n">＋528円</td><td class="n">14,688円</td></tr>
+      <tr><th>楽天デビットに全部寄せる</th><td class="n">13,800P</td><td class="n">0円</td><td class="n">13,800円</td></tr>
+    </tbody>
+    <tfoot>
+      <tr><th>公共料金・税金＝デビット／それ以外＝カード</th><td class="n">15,600P</td><td class="n">＋449円</td><td class="n">16,049円</td></tr>
+    </tfoot>
+  </table>
+  </div>
+  <p>使い分けると、カード1枚に寄せる場合より <strong class="num">年1,361円</strong> 増える。作業は電気・ガス・水道の支払いカードをデビットに登録し直す一度きり。月10万円という支出規模では、これがいちばん確実に効く操作になる。</p>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="eyebrow">前提と出典</div>
+    <h2>計算の根拠</h2>
+  </div>
+  <div class="notes">
+    <ol>
+      <li><strong>利息の計算：</strong>楽天カードは月末締め・翌月27日払い。月初の買い物は57日後、月末の買い物は27日後に引き落とされるため平均42日。月10万円なら常時 100,000×42÷30.4 ≒ 138,000円が口座に残る。楽天銀行の普通預金は年0.40%（2026年8月3日〜）、マネーブリッジ利用時は年0.48%。税引後（20.315%控除）で 0.319%／0.383% となり、年440円〜528円。デビットは即時引き落としのためゼロ。</li>
+      <li><strong>楽天市場の3.0%：</strong>楽天市場の通常ポイント1倍に、楽天カード決済のSPU +2倍（内訳はカード通常分1倍＋特典1倍）が加算されたもの。デビットはSPUのカード条件を満たさないため、通常1倍＋デビット自身の1%＝2.0%。</li>
+      <li><strong>除外した項目：</strong>楽天証券のクレカ積立（指定により対象外）、楽天モバイル・楽天ひかり等のSPU加算、期間限定ポイントの失効、楽天ペイ／楽天キャッシュ経由の支払い（2026年3月改定で条件が変わっており、デビットはチャージ自体が対象外）。楽天銀行を楽天カードの引落口座にした場合のハッピープログラム（口座振替1件につき3〜9P／月）は金額が小さいため本試算に含めていない。</li>
+      <li><strong>ブランドについて：</strong>楽天銀行デビットカードは Visa・Mastercard・JCB のいずれも還元率1%で差はなく、ベーシックは年会費無料（シルバー2,200円／ゴールド5,500円のVisaは別）。ご指定どおりブランドは結果に影響しない。</li>
+    </ol>
+    <p>参照：
+      <a href="https://www.rakuten-card.co.jp/point/pointrate/">楽天カード「還元率が異なるご利用先」</a>／
+      <a href="https://diamond.jp/zai/articles/-/269580">ザイ・オンライン「楽天銀行デビットカードは税金や公共料金でも1%」</a>／
+      <a href="https://diamond.jp/zai/articles/-/265505">ザイ・オンライン「2021年6月から公共料金の還元率が0.2%に」</a>／
+      <a href="https://www.rakuten-card.co.jp/campaign/rakuten-card/point-up/">楽天カード「SPU 楽天カードご利用で+2倍」</a>／
+      <a href="https://www.rakuten-bank.co.jp/info/2026/260617.html">楽天銀行「円預金金利の改定について」</a>／
+      <a href="https://www.rakuten-card.co.jp/overseas/insurance/">楽天カード「海外旅行傷害保険」</a>
+    </p>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function(){
+  var RATES=[
+    {c:0.01, d:0.01},
+    {c:0.002,d:0.01},
+    {c:0.03, d:0.02},
+    {c:0.01, d:0.01},
+    {c:0.005,d:0.00}
+  ];
+  var RATE_AFTER_TAX=0.0048*(1-0.20315); // マネーブリッジ優遇金利 年0.48% の税引後
+  var DAYS=42, MONTH_DAYS=30.4;
+
+  var yen=function(n){return Math.round(n).toLocaleString('ja-JP');};
+
+  function calc(){
+    var total=0, cM=0, dM=0;
+    for(var i=0;i<RATES.length;i++){
+      var el=document.getElementById('v'+i);
+      var v=Math.max(0, Number(el.value)||0);
+      var cp=Math.floor(v*RATES[i].c), dp=Math.floor(v*RATES[i].d);
+      document.getElementById('c'+i).textContent=yen(cp)+'P';
+      document.getElementById('d'+i).textContent=yen(dp)+'P';
+      total+=v; cM+=cp; dM+=dp;
+    }
+    document.getElementById('sum').textContent=yen(total)+'円';
+    document.getElementById('cT').textContent=yen(cM)+'P';
+    document.getElementById('dT').textContent=yen(dM)+'P';
+
+    var note=document.getElementById('sumNote');
+    if(total===100000){
+      note.className='';
+      note.textContent='合計10万円ちょうど。';
+    }else{
+      note.className='off';
+      note.textContent='合計が10万円と '+yen(Math.abs(total-100000))+'円 ずれています（'+(total>100000?'超過':'不足')+'）。';
+    }
+
+    var useFloat=document.getElementById('opt').checked;
+    var floatYear=useFloat ? total*DAYS/MONTH_DAYS*RATE_AFTER_TAX : 0;
+    document.getElementById('floatNote').textContent=useFloat
+      ? '常時 '+yen(total*DAYS/MONTH_DAYS)+'円 が口座に残る → 年 '+yen(floatYear)+'円'
+      : 'ポイントだけで比較中';
+
+    var diff=(cM-dM)*12+floatYear; // 正ならクレジット有利
+    var head=document.getElementById('headline');
+    var detail=document.getElementById('detail');
+    var fill=document.getElementById('fill');
+
+    var cY=cM*12, dY=dM*12;
+    detail.textContent='年間：楽天カード '+yen(cY)+'P'+(useFloat?'（＋利息 '+yen(floatYear)+'円）':'')
+      +' ／ 楽天デビット '+yen(dY)+'P。';
+
+    if(Math.abs(diff)<120){
+      head.innerHTML='この内訳では <span class="num">ほぼ互角</span>（年 '+yen(Math.abs(diff))+'円差）';
+      head.style.color='var(--ink)';
+      fill.style.background='var(--hair)';
+      fill.style.left='calc(50% - 1px)';
+      fill.style.width='2px';
+    }else{
+      var win=diff>0?'楽天カード':'楽天デビット';
+      var col=diff>0?'var(--credit)':'var(--debit)';
+      head.innerHTML='<span style="color:'+col+'">'+win+'</span> が 年 <span class="num" style="color:'+col+'">'+yen(Math.abs(diff))+'円</span> 得（月 '+yen(Math.abs(diff)/12)+'円）';
+      head.style.color='var(--ink)';
+      var pct=Math.min(Math.abs(diff)/6000,1)*50;
+      fill.style.background=col;
+      fill.style.left=diff>0?'50%':(50-pct)+'%';
+      fill.style.width=pct+'%';
+    }
+  }
+
+  for(var i=0;i<RATES.length;i++){
+    document.getElementById('v'+i).addEventListener('input',calc);
+  }
+  document.getElementById('opt').addEventListener('change',calc);
+  calc();
+})();
+</script>
