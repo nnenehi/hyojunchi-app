@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#6b4a2b">
+<link rel="manifest" href="manifest.json">
+<title>山受け 椪径級カウント</title>
+<style>
+  :root {
+    --brown: #6b4a2b;
+    --brown-light: #8a6540;
+    --green: #2d5a3d;
+    --red: #b33a3a;
+    --blue: #2f5f8f;
+    --bg: #f5f4f0;
+    --card: #ffffff;
+    --border: #ddd8cf;
+    --text: #2b2520;
+    --muted: #776d62;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+    background: var(--bg); color: var(--text);
+    padding-bottom: 70px;
+  }
+  header {
+    background: var(--brown); color: #fff;
+    padding: 10px 12px; position: sticky; top: 0; z-index: 20;
+  }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  #siteLabel { font-size: 12px; opacity: .9; margin-top: 2px; word-break: break-all; }
+
+  /* タブバー */
+  nav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 30;
+    display: flex; background: #fff; border-top: 1px solid var(--border);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  nav button {
+    flex: 1; padding: 10px 0 8px; border: none; background: none;
+    font-size: 12px; color: var(--muted); cursor: pointer;
+  }
+  nav button.active { color: var(--brown); font-weight: 700; border-top: 3px solid var(--brown); margin-top: -1px; }
+
+  .tab { display: none; padding: 10px; }
+  .tab.active { display: block; }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px; margin-bottom: 10px;
+  }
+  .card h2 { font-size: 14px; margin: 0 0 8px; color: var(--brown); }
+
+  label.fld { display: block; font-size: 12px; color: var(--muted); margin: 8px 0 3px; }
+  input[type=text], input[type=number], input[type=date], select, textarea {
+    width: 100%; padding: 10px; font-size: 16px;
+    border: 1px solid var(--border); border-radius: 8px; background: #fff;
+  }
+
+  .btn {
+    display: inline-block; padding: 12px 16px; border: none; border-radius: 8px;
+    font-size: 15px; font-weight: 600; cursor: pointer; background: var(--brown); color: #fff;
+  }
+  .btn.full { width: 100%; margin-top: 10px; }
+  .btn.gray { background: #8f877d; }
+  .btn.red { background: var(--red); }
+  .btn.small { padding: 7px 12px; font-size: 13px; }
+  .btn.outline { background: #fff; color: var(--brown); border: 1.5px solid var(--brown); }
+
+  /* チップ（椪切替・プリセット） */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    padding: 10px 14px; border-radius: 20px; border: 1.5px solid var(--border);
+    background: #fff; font-size: 15px; cursor: pointer;
+  }
+  .chip.sel { background: var(--brown); color: #fff; border-color: var(--brown); font-weight: 700; }
+  .chip.sm { padding: 6px 11px; font-size: 13px; }
+  .chip .n { font-size: 12px; opacity: .8; margin-left: 4px; }
+
+  /* ＋1 / −1 / 入力 の切替 */
+  .seg { display: flex; border-radius: 10px; overflow: hidden; border: 1.5px solid var(--border); margin-top: 8px; }
+  .seg button {
+    flex: 1; padding: 14px 0; font-size: 17px; font-weight: 700;
+    border: none; background: #fff; color: var(--muted); cursor: pointer;
+  }
+  .seg button.plus.sel { background: var(--green); color: #fff; }
+  .seg button.minus.sel { background: var(--red); color: #fff; }
+  .seg button.set.sel { background: var(--blue); color: #fff; }
+
+  /* 径級グリッド */
+  .diaGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; margin-top: 10px; }
+  .diaBtn {
+    position: relative; padding: 18px 0 8px; font-size: 18px; font-weight: 700;
+    border: 1.5px solid var(--border); border-radius: 10px; background: #fff;
+    color: var(--text); cursor: pointer; line-height: 1;
+  }
+  .diaBtn:active { background: #efe8dd; }
+  body.mode-minus .diaBtn:active { background: #f3dcdc; }
+  body.mode-set .diaBtn:active { background: #dde8f3; }
+  .diaBtn .cnt {
+    position: absolute; top: 3px; right: 4px; font-size: 12px; font-weight: 700;
+    color: #fff; border-radius: 9px; padding: 1px 6px; min-width: 18px; background: var(--brown-light);
+  }
+  .diaBtn.has { border-color: var(--brown-light); background: #fbf7f1; }
+  .diaBtn small { display: block; font-size: 10px; font-weight: 500; color: var(--muted); margin-top: 3px; }
+  .customRow { display: flex; gap: 8px; margin-top: 8px; }
+  .customRow input { flex: 1; }
+
+  /* トースト */
+  #toast {
+    position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%);
+    background: rgba(43,37,32,.94); color: #fff; padding: 10px 18px;
+    border-radius: 24px; font-size: 14px; z-index: 50; display: none; white-space: nowrap;
+  }
+
+  /* テーブル */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { border: 1px solid var(--border); padding: 7px 4px; text-align: center; white-space: nowrap; }
+  th { background: #efe9df; font-weight: 600; }
+  td.sp { text-align: left; padding-left: 8px; font-weight: 600; }
+  tr.total td { background: #f4f0e9; font-weight: 700; }
+  td.zero { color: #c8c0b4; }
+
+  /* ミニ集計バー */
+  #miniSummary {
+    display: flex; gap: 6px; overflow-x: auto; padding: 6px 0 2px; font-size: 12px;
+  }
+  #miniSummary .ms {
+    flex-shrink: 0; background: #fff; border: 1px solid var(--border);
+    border-radius: 8px; padding: 5px 9px; white-space: nowrap;
+  }
+  #miniSummary .ms b { color: var(--brown); }
+
+  /* 椪・現場の一覧 */
+  .item {
+    display: flex; align-items: center; gap: 8px; padding: 9px 4px;
+    border-bottom: 1px solid var(--border);
+  }
+  .item .info { flex: 1; font-size: 13px; }
+  .item .info small { color: var(--muted); }
+  .item.cur .info { color: var(--brown); font-weight: 700; }
+  .badge { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 12px; color: #fff; background: var(--brown); }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; line-height: 1.6; }
+  .empty { text-align: center; color: var(--muted); padding: 30px 0; font-size: 14px; }
+
+  /* モーダル */
+  #overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 60;
+    align-items: flex-end;
+  }
+  #overlay.open { display: flex; }
+  #modal {
+    background: #fff; width: 100%; border-radius: 16px 16px 0 0; padding: 16px;
+    max-height: 85vh; overflow-y: auto;
+  }
+  #modal h3 { margin: 0 0 10px; font-size: 16px; color: var(--brown); }
+  .modalBtns { display: flex; gap: 8px; margin-top: 14px; }
+  .modalBtns .btn { flex: 1; }
+  .bigNum { font-size: 28px !important; text-align: center; font-weight: 700; }
+</style>
+</head>
+<body class="mode-plus">
+
+<header>
+  <h1>山受け 椪径級カウント</h1>
+  <div id="siteLabel">現場未設定 — 「現場」タブから作成してください</div>
+</header>
+
+<!-- ══════ 記録タブ ══════ -->
+<div class="tab active" id="tab-record">
+  <div id="miniSummary"></div>
+
+  <div class="card">
+    <h2>椪（タップで切り替え）</h2>
+    <div class="chips" id="pileChips"></div>
+    <div class="seg">
+      <button class="plus sel" id="segPlus" onclick="setMode('plus')">＋1</button>
+      <button class="minus" id="segMinus" onclick="setMode('minus')">−1</button>
+      <button class="set" id="segSet" onclick="setMode('set')">数値入力</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2 id="gridTitle">径級をタップして本数を数える（cm・2cm刻み）</h2>
+    <div class="diaGrid" id="diaGrid"></div>
+    <div class="customRow">
+      <input type="number" id="customDia" step="2" min="2" inputmode="numeric" placeholder="62以上・その他の径級">
+      <button class="btn" onclick="addCustom()">＋1</button>
+    </div>
+    <button class="btn gray full" onclick="undoLast()">↩ 直前の操作を取り消す</button>
+  </div>
+</div>
+
+<!-- ══════ 集計タブ ══════ -->
+<div class="tab" id="tab-summary">
+  <div class="card">
+    <h2>椪別の本数</h2>
+    <div id="pileSummary"></div>
+  </div>
+  <div class="card">
+    <h2>径級別分布（椪ごと）</h2>
+    <div id="distTable" style="overflow-x:auto;"></div>
+  </div>
+</div>
+
+<!-- ══════ 椪タブ ══════ -->
+<div class="tab" id="tab-pile">
+  <div class="card">
+    <h2>椪の情報</h2>
+    <label class="fld">用途名</label>
+    <input type="text" id="pUse" placeholder="例: 一般材、柱材、パルプ">
+    <div class="chips" id="useChips" style="margin-top:6px;"></div>
+    <label class="fld">材長</label>
+    <input type="text" id="pLen" placeholder="例: 3.65m">
+    <div class="chips" id="lenChips" style="margin-top:6px;"></div>
+    <label class="fld">樹種</label>
+    <input type="text" id="pSp" placeholder="例: カラマツ">
+    <div class="chips" id="spChips" style="margin-top:6px;"></div>
+    <label class="fld">椪No.</label>
+    <input type="number" id="pNo" inputmode="numeric" placeholder="自動で付番されます">
+    <label class="fld">備考（任意）</label>
+    <input type="text" id="pMemo" placeholder="例: 曲がり材多め、土場奥">
+    <button class="btn full" onclick="createPile()">＋ 新しい椪を作成してカウント開始</button>
+    <button class="btn outline full" onclick="updatePile()">現在の椪の情報を上書き修正</button>
+  </div>
+
+  <div class="card">
+    <h2>この現場の椪（切り替え）</h2>
+    <div id="pileList"></div>
+    <p class="hint">材長や用途ごとに椪を作り、ここか記録画面上部のチップで切り替えてカウントします。</p>
+  </div>
+
+  <div class="card">
+    <h2>プリセットを追加</h2>
+    <label class="fld">用途名</label>
+    <div class="customRow"><input type="text" id="newUse" placeholder="例: 合板材"><button class="btn" onclick="addPreset('uses','newUse')">追加</button></div>
+    <label class="fld">材長</label>
+    <div class="customRow"><input type="text" id="newLen" placeholder="例: 3.0m"><button class="btn" onclick="addPreset('lengths','newLen')">追加</button></div>
+    <label class="fld">樹種</label>
+    <div class="customRow"><input type="text" id="newSp" placeholder="例: アカエゾマツ"><button class="btn" onclick="addPreset('species','newSp')">追加</button></div>
+    <p class="hint">追加したプリセットはチップとして表示されます。チップを長押しすると削除できます（標準のものは削除できません）。</p>
+  </div>
+</div>
+
+<!-- ══════ 現場タブ ══════ -->
+<div class="tab" id="tab-site">
+  <div class="card">
+    <h2>現場情報</h2>
+    <label class="fld">山林名</label>
+    <input type="text" id="fYama" placeholder="例: ○○山林">
+    <label class="fld">林班・小班</label>
+    <input type="text" id="fRinpan" placeholder="例: 12林班 は小班">
+    <label class="fld">担当者・伐採者（任意）</label>
+    <input type="text" id="fTanto" placeholder="例: ○○班">
+    <label class="fld">日付</label>
+    <input type="date" id="fDate">
+    <button class="btn full" onclick="createSite()">＋ 新しい現場を作成して開始</button>
+    <button class="btn outline full" onclick="updateSite()">現在の現場の情報を上書き修正</button>
+  </div>
+
+  <div class="card">
+    <h2>保存済みの現場（切り替え）</h2>
+    <div id="siteList"></div>
+    <p class="hint">データは端末内に自動保存され、電波がなくても消えません。</p>
+  </div>
+
+  <div class="card">
+    <h2>データ出力・バックアップ</h2>
+    <button class="btn full" onclick="exportPileCSV()">現在の椪をCSV出力（径級・本数）</button>
+    <button class="btn full" onclick="exportSiteCSV()">現在の現場の全椪をCSV出力（径級×椪の表）</button>
+    <button class="btn full" onclick="exportAllCSV()">全現場を一覧CSV出力（1行＝1椪1径級）</button>
+    <button class="btn outline full" onclick="exportJSON()">全データをバックアップ（JSON）</button>
+    <label class="fld" style="margin-top:12px;">バックアップ（JSON）から復元</label>
+    <input type="file" id="importFile" accept=".json" onchange="importJSON(this)">
+    <p class="hint">CSVはExcelでそのまま開けます（UTF-8 BOM付き）。径級は10〜60cmをすべて（0本も含めて）出力するので、Excelの集計表にそのまま貼り付けられます。機種変更や紛失に備え、作業後はCSVかJSONを出力してください。</p>
+  </div>
+</div>
+
+<nav>
+  <button class="active" data-tab="record" onclick="showTab('record')">🔢 記録</button>
+  <button data-tab="summary" onclick="showTab('summary')">📊 集計</button>
+  <button data-tab="pile" onclick="showTab('pile')">🪵 椪</button>
+  <button data-tab="site" onclick="showTab('site')">🌲 現場</button>
+</nav>
+
+<div id="toast"></div>
+
+<!-- 本数の直接入力モーダル -->
+<div id="overlay" onclick="if(event.target===this) closeModal()">
+  <div id="modal">
+    <h3 id="modalTitle">本数を入力</h3>
+    <input type="number" id="eCount" class="bigNum" inputmode="numeric" min="0">
+    <div class="modalBtns">
+      <button class="btn gray" onclick="closeModal()">閉じる</button>
+      <button class="btn" onclick="saveCount()">保存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+const KEY = "yamauke_v1";
+const DIA_MIN = 10, DIA_MAX = 60;
+const BASE_PRESETS = {
+  uses: ["一般材", "柱材", "合板材", "パルプ", "チップ"],
+  lengths: ["3.65m", "4.0m", "3.0m", "2.4m", "2.0m", "1.8m"],
+  species: ["トドマツ", "カラマツ", "スギ", "エゾマツ", "広葉樹"]
+};
+
+let state = load();
+let mode = "plus";
+let undoStack = [];       // { pileId, dia, before }
+let editDia = null;
+
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && Array.isArray(s.sites)) {
+      if (!s.presets) s.presets = { uses: [], lengths: [], species: [] };
+      return s;
+    }
+  } catch (e) {}
+  return { sites: [], activeSiteId: null, presets: { uses: [], lengths: [], species: [] } };
+}
+function save() { localStorage.setItem(KEY, JSON.stringify(state)); }
+function curSite() { return state.sites.find(s => s.id === state.activeSiteId) || null; }
+function curPile() {
+  const s = curSite(); if (!s) return null;
+  return s.piles.find(p => p.id === s.activePileId) || null;
+}
+function presets(kind) { return BASE_PRESETS[kind].concat(state.presets[kind] || []); }
+function newId() { return Date.now() + "" + Math.floor(Math.random() * 1000); }
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function jsq(s) { return esc(s).replace(/'/g, "\\'"); }
+function toast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.display = "block";
+  clearTimeout(t._tm); t._tm = setTimeout(() => t.style.display = "none", 1600);
+}
+function today() {
+  const d = new Date();
+  return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+}
+function pileTotal(p) { return Object.values(p.counts).reduce((a, b) => a + b, 0); }
+function siteTotal(s) { return s.piles.reduce((a, p) => a + pileTotal(p), 0); }
+function pileName(p) {
+  return ["椪" + p.no, p.use, p.len, p.sp].filter(Boolean).join(" ");
+}
+function siteName(s) {
+  return [s.yama, s.rinpan].filter(Boolean).join(" / ") || "(名称未設定)";
+}
+// 10〜60cm に加え、60cm超で本数のある径級も昇順で並べる
+function diaList(piles) {
+  const set = new Set();
+  for (let d = DIA_MIN; d <= DIA_MAX; d += 2) set.add(d);
+  piles.forEach(p => Object.keys(p.counts).forEach(k => { if (p.counts[k] > 0) set.add(+k); }));
+  return [...set].sort((a, b) => a - b);
+}
+
+/* ───── タブ ───── */
+function showTab(name) {
+  document.querySelectorAll(".tab").forEach(el => el.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+  renderAll();
+}
+
+/* ───── 現場 ───── */
+function createSite() {
+  const yama = document.getElementById("fYama").value.trim();
+  const rinpan = document.getElementById("fRinpan").value.trim();
+  const tanto = document.getElementById("fTanto").value.trim();
+  const date = document.getElementById("fDate").value || today();
+  if (!yama && !rinpan) { toast("山林名か林班小班を入力してください"); return; }
+  const s = { id: newId(), yama, rinpan, tanto, date, piles: [], activePileId: null, createdAt: new Date().toISOString() };
+  state.sites.push(s);
+  state.activeSiteId = s.id;
+  save(); renderAll();
+  toast("現場を作成しました。次に椪を作成してください");
+  showTab("pile");
+}
+function updateSite() {
+  const s = curSite();
+  if (!s) { toast("先に現場を作成してください"); return; }
+  s.yama = document.getElementById("fYama").value.trim();
+  s.rinpan = document.getElementById("fRinpan").value.trim();
+  s.tanto = document.getElementById("fTanto").value.trim();
+  s.date = document.getElementById("fDate").value || s.date;
+  save(); renderAll();
+  toast("現場情報を更新しました");
+}
+function switchSite(id) {
+  state.activeSiteId = id; undoStack = []; save(); renderAll();
+  toast("現場を切り替えました");
+}
+function deleteSite(id) {
+  const s = state.sites.find(x => x.id === id);
+  if (!s) return;
+  if (!confirm(siteName(s) + "\n椪 " + s.piles.length + " 個・合計 " + siteTotal(s) + " 本を含めて削除します。よろしいですか？")) return;
+  state.sites = state.sites.filter(x => x.id !== id);
+  if (state.activeSiteId === id) state.activeSiteId = state.sites.length ? state.sites[state.sites.length - 1].id : null;
+  undoStack = [];
+  save(); renderAll();
+}
+
+/* ───── 椪 ───── */
+function readPileForm() {
+  return {
+    use: document.getElementById("pUse").value.trim(),
+    len: document.getElementById("pLen").value.trim(),
+    sp: document.getElementById("pSp").value.trim(),
+    no: parseInt(document.getElementById("pNo").value, 10),
+    memo: document.getElementById("pMemo").value.trim()
+  };
+}
+function nextPileNo(s) { return s.piles.reduce((m, p) => Math.max(m, p.no || 0), 0) + 1; }
+function createPile() {
+  const s = curSite();
+  if (!s) { toast("先に「現場」タブで現場を作成してください"); showTab("site"); return; }
+  const f = readPileForm();
+  if (!f.use && !f.len) { toast("用途名か材長を入力してください"); return; }
+  // フォームに選択中の椪のNoが残っている場合は重複させず自動付番する
+  const noTaken = s.piles.some(x => x.no === f.no);
+  const p = { id: newId(), no: f.no > 0 && !noTaken ? f.no : nextPileNo(s), use: f.use, len: f.len, sp: f.sp, memo: f.memo, counts: {}, createdAt: new Date().toISOString() };
+  s.piles.push(p);
+  s.activePileId = p.id;
+  save(); renderAll();
+  toast(pileName(p) + " を作成しました");
+  showTab("record");
+}
+function updatePile() {
+  const p = curPile();
+  if (!p) { toast("先に椪を作成してください"); return; }
+  const f = readPileForm();
+  if (!f.use && !f.len) { toast("用途名か材長を入力してください"); return; }
+  p.use = f.use; p.len = f.len; p.sp = f.sp; p.memo = f.memo;
+  if (f.no > 0) p.no = f.no;
+  save(); renderAll();
+  toast("椪の情報を更新しました");
+}
+function switchPile(id) {
+  const s = curSite(); if (!s) return;
+  s.activePileId = id; save(); renderAll();
+}
+function deletePile(id) {
+  const s = curSite(); if (!s) return;
+  const p = s.piles.find(x => x.id === id); if (!p) return;
+  if (!confirm(pileName(p) + "\n" + pileTotal(p) + " 本のカウントを含めて削除します。よろしいですか？")) return;
+  s.piles = s.piles.filter(x => x.id !== id);
+  if (s.activePileId === id) s.activePileId = s.piles.length ? s.piles[s.piles.length - 1].id : null;
+  undoStack = undoStack.filter(u => u.pileId !== id);
+  save(); renderAll();
+}
+function fillPileField(id, v) { document.getElementById(id).value = v; }
+
+/* ───── プリセット ───── */
+function addPreset(kind, inputId) {
+  const el = document.getElementById(inputId);
+  const name = el.value.trim();
+  if (!name) return;
+  if (presets(kind).includes(name)) { toast("すでにあります"); return; }
+  state.presets[kind].push(name);
+  el.value = ""; save(); renderAll();
+  toast("「" + name + "」を追加しました");
+}
+function removePreset(kind, name) {
+  if (!state.presets[kind].includes(name)) { toast("標準のプリセットは削除できません"); return; }
+  if (!confirm("プリセット「" + name + "」を削除しますか？（既存の椪のデータは変わりません）")) return;
+  state.presets[kind] = state.presets[kind].filter(x => x !== name);
+  save(); renderAll();
+}
+// 長押し判定（プリセットチップの削除用）
+let pressTimer = null, pressed = false;
+function chipDown(kind, name) {
+  pressed = false;
+  clearTimeout(pressTimer);
+  pressTimer = setTimeout(() => { pressed = true; removePreset(kind, name); }, 650);
+}
+function chipUp() { clearTimeout(pressTimer); }
+function chipClick(fieldId, kind, name) {
+  if (pressed) { pressed = false; return; }
+  fillPileField(fieldId, name);
+}
+
+/* ───── カウント ───── */
+function setMode(m) {
+  mode = m;
+  document.getElementById("segPlus").classList.toggle("sel", m === "plus");
+  document.getElementById("segMinus").classList.toggle("sel", m === "minus");
+  document.getElementById("segSet").classList.toggle("sel", m === "set");
+  document.body.className = "mode-" + m;
+  const t = document.getElementById("gridTitle");
+  t.textContent = m === "plus" ? "径級をタップして本数を数える（cm・2cm刻み）"
+    : m === "minus" ? "径級をタップすると1本減らします"
+    : "径級をタップして本数を直接入力";
+}
+function tapDia(dia) {
+  const p = curPile();
+  if (!p) { toast("先に「椪」タブで椪を作成してください"); showTab("pile"); return; }
+  if (mode === "set") { openEdit(dia); return; }
+  const before = p.counts[dia] || 0;
+  let after = mode === "plus" ? before + 1 : before - 1;
+  if (after < 0) { toast(dia + "cm は 0本です"); return; }
+  applyCount(p, dia, after, before);
+  if (navigator.vibrate) navigator.vibrate(mode === "plus" ? 30 : [30, 40, 30]);
+  toast(dia + "cm " + (mode === "plus" ? "＋1" : "−1") + " → " + after + "本（椪合計 " + pileTotal(p) + "本）");
+}
+function applyCount(p, dia, after, before) {
+  if (after > 0) p.counts[dia] = after; else delete p.counts[dia];
+  undoStack.push({ pileId: p.id, dia, before });
+  if (undoStack.length > 100) undoStack.shift();
+  save(); renderAll();
+}
+function addCustom() {
+  const el = document.getElementById("customDia");
+  let d = parseFloat(el.value);
+  if (!d || d <= 0) { toast("径級を入力してください"); return; }
+  d = Math.round(d / 2) * 2;  // 2cm刻みに丸め
+  if (d < 2) d = 2;
+  el.value = "";
+  const prev = mode; mode = "plus";
+  tapDia(d);
+  mode = prev;
+}
+function undoLast() {
+  const s = curSite();
+  if (!s || !undoStack.length) { toast("取り消せる操作がありません"); return; }
+  const u = undoStack.pop();
+  const p = s.piles.find(x => x.id === u.pileId);
+  if (!p) { toast("取り消せる操作がありません"); return; }
+  if (u.before > 0) p.counts[u.dia] = u.before; else delete p.counts[u.dia];
+  save(); renderAll();
+  toast(u.dia + "cm を " + u.before + "本に戻しました");
+}
+
+/* ───── 本数入力モーダル ───── */
+function openEdit(dia) {
+  const p = curPile(); if (!p) return;
+  editDia = dia;
+  document.getElementById("modalTitle").textContent = pileName(p) + "　" + dia + "cm の本数";
+  const inp = document.getElementById("eCount");
+  inp.value = p.counts[dia] || 0;
+  document.getElementById("overlay").classList.add("open");
+  setTimeout(() => { inp.focus(); inp.select(); }, 50);
+}
+function saveCount() {
+  const p = curPile(); if (!p) return;
+  let n = parseInt(document.getElementById("eCount").value, 10);
+  if (isNaN(n) || n < 0) { toast("0以上の整数を入力してください"); return; }
+  applyCount(p, editDia, n, p.counts[editDia] || 0);
+  closeModal();
+  toast(editDia + "cm を " + n + "本にしました");
+}
+function closeModal() {
+  editDia = null;
+  document.getElementById("overlay").classList.remove("open");
+}
+
+/* ───── 描画 ───── */
+function renderAll() {
+  const s = curSite(), p = curPile();
+  document.getElementById("siteLabel").textContent =
+    s ? siteName(s) + "（椪" + s.piles.length + "・" + siteTotal(s) + "本）" + (p ? "　▶ " + pileName(p) : "")
+      : "現場未設定 — 「現場」タブから作成してください";
+
+  // 椪チップ
+  let chips = "";
+  if (s) chips = s.piles.map(x =>
+    `<button class="chip ${p && x.id === p.id ? "sel" : ""}" onclick="switchPile('${x.id}')">${esc(pileName(x))}<span class="n">${pileTotal(x)}本</span></button>`
+  ).join("");
+  chips += `<button class="chip" onclick="showTab('pile');document.getElementById('pUse').focus()">＋椪を追加</button>`;
+  document.getElementById("pileChips").innerHTML = chips;
+
+  // 径級グリッド
+  const counts = p ? p.counts : {};
+  let grid = "";
+  diaList(p ? [p] : []).forEach(d => {
+    const c = counts[d] || 0;
+    grid += `<button class="diaBtn ${c ? "has" : ""}" onclick="tapDia(${d})">${d}` +
+      (c ? `<span class="cnt">${c}</span>` : "") +
+      `<small>${c}本</small></button>`;
+  });
+  document.getElementById("diaGrid").innerHTML = grid;
+
+  renderMini(s, p);
+  renderPileSummary(s);
+  renderDist(s);
+  renderPileList(s);
+  renderPresetChips();
+  renderSites();
+
+  if (document.getElementById("tab-site").classList.contains("active")) {
+    if (s) {
+      document.getElementById("fYama").value = s.yama || "";
+      document.getElementById("fRinpan").value = s.rinpan || "";
+      document.getElementById("fTanto").value = s.tanto || "";
+      document.getElementById("fDate").value = s.date || today();
+    } else if (!document.getElementById("fDate").value) {
+      document.getElementById("fDate").value = today();
+    }
+  }
+  if (document.getElementById("tab-pile").classList.contains("active")) {
+    if (p) {
+      document.getElementById("pUse").value = p.use || "";
+      document.getElementById("pLen").value = p.len || "";
+      document.getElementById("pSp").value = p.sp || "";
+      document.getElementById("pNo").value = p.no || "";
+      document.getElementById("pMemo").value = p.memo || "";
+    } else if (s) {
+      document.getElementById("pNo").value = nextPileNo(s);
+    }
+  }
+}
+
+function renderMini(s, p) {
+  const el = document.getElementById("miniSummary");
+  if (!s) { el.innerHTML = `<span class="ms">現場なし</span>`; return; }
+  let html = `<span class="ms"><b>現場全体</b> ${siteTotal(s)}本 / 椪${s.piles.length}</span>`;
+  if (p) html += `<span class="ms"><b>この椪</b> ${pileTotal(p)}本</span>`;
+  el.innerHTML = html;
+}
+
+function renderPileSummary(s) {
+  const el = document.getElementById("pileSummary");
+  if (!s || !s.piles.length) { el.innerHTML = `<div class="empty">まだ椪がありません</div>`; return; }
+  let rows = "", tot = 0;
+  s.piles.forEach(p => {
+    const n = pileTotal(p); tot += n;
+    const ds = Object.keys(p.counts).map(Number);
+    const range = ds.length ? Math.min(...ds) + "〜" + Math.max(...ds) + "cm" : "-";
+    rows += `<tr><td class="sp">椪${p.no}</td><td style="text-align:left">${esc([p.use, p.len, p.sp].filter(Boolean).join(" "))}</td><td>${n}</td><td>${range}</td></tr>`;
+  });
+  rows += `<tr class="total"><td class="sp">合計</td><td></td><td>${tot}</td><td></td></tr>`;
+  el.innerHTML = `<table><tr><th>椪</th><th>用途・材長・樹種</th><th>本数</th><th>径級幅</th></tr>${rows}</table>`;
+}
+
+function renderDist(s) {
+  const el = document.getElementById("distTable");
+  if (!s || !s.piles.length) { el.innerHTML = `<div class="empty">まだ椪がありません</div>`; return; }
+  const dias = diaList(s.piles);
+  let html = `<table><tr><th>径級</th>${s.piles.map(p => `<th>椪${p.no}<br><small>${esc([p.len, p.sp].filter(Boolean).join(" "))}</small></th>`).join("")}<th>計</th></tr>`;
+  dias.forEach(d => {
+    let rowTot = 0;
+    html += `<tr><td class="sp">${d}cm</td>`;
+    s.piles.forEach(p => {
+      const v = p.counts[d] || 0; rowTot += v;
+      html += `<td class="${v ? "" : "zero"}">${v}</td>`;
+    });
+    html += `<td>${rowTot}</td></tr>`;
+  });
+  html += `<tr class="total"><td class="sp">合計</td>${s.piles.map(p => `<td>${pileTotal(p)}</td>`).join("")}<td>${siteTotal(s)}</td></tr></table>`;
+  el.innerHTML = html;
+}
+
+function renderPileList(s) {
+  const el = document.getElementById("pileList");
+  if (!s) { el.innerHTML = `<div class="empty">先に現場を作成してください</div>`; return; }
+  if (!s.piles.length) { el.innerHTML = `<div class="empty">まだ椪がありません</div>`; return; }
+  el.innerHTML = s.piles.slice().reverse().map(p => `
+    <div class="item ${p.id === s.activePileId ? "cur" : ""}">
+      <div class="info">${esc(pileName(p))}<br><small>${pileTotal(p)}本${p.memo ? " / " + esc(p.memo) : ""}</small></div>
+      ${p.id === s.activePileId
+        ? `<span class="badge">選択中</span>`
+        : `<button class="btn small" onclick="switchPile('${p.id}')">切替</button>`}
+      <button class="btn small red" onclick="deletePile('${p.id}')">削除</button>
+    </div>`).join("");
+}
+
+function renderPresetChips() {
+  const map = { uses: ["useChips", "pUse"], lengths: ["lenChips", "pLen"], species: ["spChips", "pSp"] };
+  Object.keys(map).forEach(kind => {
+    const [elId, fieldId] = map[kind];
+    document.getElementById(elId).innerHTML = presets(kind).map(v =>
+      `<button class="chip sm" onclick="chipClick('${fieldId}','${kind}','${jsq(v)}')"
+        onpointerdown="chipDown('${kind}','${jsq(v)}')" onpointerup="chipUp()" onpointerleave="chipUp()" oncontextmenu="return false">${esc(v)}</button>`
+    ).join("");
+  });
+}
+
+function renderSites() {
+  const el = document.getElementById("siteList");
+  if (!state.sites.length) { el.innerHTML = `<div class="empty">保存済みの現場はありません</div>`; return; }
+  el.innerHTML = state.sites.slice().reverse().map(s => `
+    <div class="item ${s.id === state.activeSiteId ? "cur" : ""}">
+      <div class="info">${esc(siteName(s))}<br><small>椪${s.piles.length} / ${siteTotal(s)}本 / ${esc(s.date || "")}${s.tanto ? " / " + esc(s.tanto) : ""}</small></div>
+      ${s.id === state.activeSiteId
+        ? `<span class="badge">選択中</span>`
+        : `<button class="btn small" onclick="switchSite('${s.id}')">切替</button>`}
+      <button class="btn small red" onclick="deleteSite('${s.id}')">削除</button>
+    </div>`).join("");
+}
+
+/* ───── エクスポート ───── */
+function csvEsc(v) {
+  v = String(v == null ? "" : v);
+  return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+function row(arr) { return arr.map(csvEsc).join(",") + "\n"; }
+function safeName(s) { return s.replace(/[\\/:*?"<>| ]/g, "_"); }
+
+// 椪1つ: 径級の横に本数（10〜60cmは0本も出力）
+function buildPileCSV(s, p) {
+  let out = "";
+  out += row(["山林名", s.yama]) + row(["林班小班", s.rinpan]) + row(["担当者", s.tanto]) + row(["日付", s.date]);
+  out += row(["椪No", p.no]) + row(["用途", p.use]) + row(["材長", p.len]) + row(["樹種", p.sp]) + row(["備考", p.memo]);
+  out += "\n" + row(["径級(cm)", "本数"]);
+  diaList([p]).forEach(d => { out += row([d, p.counts[d] || 0]); });
+  out += row(["合計", pileTotal(p)]);
+  return out;
+}
+// 現場1つ: 行＝径級、列＝椪
+function buildSiteCSV(s) {
+  let out = "";
+  out += row(["山林名", s.yama]) + row(["林班小班", s.rinpan]) + row(["担当者", s.tanto]) + row(["日付", s.date]) + "\n";
+  out += row(["椪No"].concat(s.piles.map(p => p.no), ["計"]));
+  out += row(["用途"].concat(s.piles.map(p => p.use), [""]));
+  out += row(["材長"].concat(s.piles.map(p => p.len), [""]));
+  out += row(["樹種"].concat(s.piles.map(p => p.sp), [""]));
+  out += row(["径級(cm)"].concat(s.piles.map(() => "本数"), [""]));
+  diaList(s.piles).forEach(d => {
+    const vals = s.piles.map(p => p.counts[d] || 0);
+    out += row([d].concat(vals, [vals.reduce((a, b) => a + b, 0)]));
+  });
+  out += row(["合計"].concat(s.piles.map(pileTotal), [siteTotal(s)]));
+  return out;
+}
+// 全現場: 1行＝1椪1径級（後でExcelのピボット等で集計する用）
+function buildAllCSV(sites) {
+  let out = row(["山林名", "林班小班", "担当者", "日付", "椪No", "用途", "材長", "樹種", "備考", "径級(cm)", "本数"]);
+  sites.forEach(s => s.piles.forEach(p => {
+    diaList([p]).forEach(d => {
+      out += row([s.yama, s.rinpan, s.tanto, s.date, p.no, p.use, p.len, p.sp, p.memo, d, p.counts[d] || 0]);
+    });
+  }));
+  return out;
+}
+function download(name, content, type) {
+  // ExcelでUTF-8として開けるようCSVにはBOMを付ける
+  const data = type === "text/csv" ? "﻿" + content : content;
+  const blob = new Blob([data], { type: type + ";charset=utf-8" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function stamp() {
+  const d = new Date();
+  return d.getFullYear() + ("0" + (d.getMonth() + 1)).slice(-2) + ("0" + d.getDate()).slice(-2);
+}
+function exportPileCSV() {
+  const s = curSite(), p = curPile();
+  if (!s || !p) { toast("出力する椪がありません"); return; }
+  download("山受け_" + safeName(siteName(s)) + "_" + safeName(pileName(p)) + "_" + stamp() + ".csv", buildPileCSV(s, p), "text/csv");
+  toast("CSVを出力しました");
+}
+function exportSiteCSV() {
+  const s = curSite();
+  if (!s || !s.piles.length) { toast("出力する椪がありません"); return; }
+  download("山受け_" + safeName(siteName(s)) + "_全椪_" + stamp() + ".csv", buildSiteCSV(s), "text/csv");
+  toast("CSVを出力しました");
+}
+function exportAllCSV() {
+  if (!state.sites.some(s => s.piles.length)) { toast("出力する記録がありません"); return; }
+  download("山受け_全現場一覧_" + stamp() + ".csv", buildAllCSV(state.sites), "text/csv");
+  toast("CSVを出力しました");
+}
+function exportJSON() {
+  download("山受け_バックアップ_" + stamp() + ".json", JSON.stringify(state, null, 1), "application/json");
+  toast("バックアップを出力しました");
+}
+function importJSON(input) {
+  const f = input.files[0];
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const s = JSON.parse(rd.result);
+      if (!s || !Array.isArray(s.sites)) throw 0;
+      if (!confirm("現在のデータをバックアップの内容で置き換えます。よろしいですか？")) return;
+      if (!s.presets) s.presets = { uses: [], lengths: [], species: [] };
+      state = s; undoStack = []; save(); renderAll();
+      toast("復元しました");
+    } catch (e) { toast("ファイルを読み込めませんでした"); }
+    input.value = "";
+  };
+  rd.readAsText(f);
+}
+
+/* ───── 起動 ───── */
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost" || location.hostname === "127.0.0.1")) {
+  navigator.serviceWorker.register("sw.js").catch(() => {});
+}
+document.getElementById("fDate").value = today();
+renderAll();
+</script>
+</body>
+</html>

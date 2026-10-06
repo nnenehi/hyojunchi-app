@@ -39,3 +39,7 @@ python -m http.server 8765 --directory hyojunchi-app
 ```
 
 を実行し、ブラウザで http://localhost:8765 を開きます。
+
+## 関連アプリ
+
+- [山受け 椪径級カウント](yamauke/README.md) — 皆伐の山受けで椪ごとの径級別本数をカウントするアプリ（`yamauke/` フォルダ）
