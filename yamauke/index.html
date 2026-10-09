@@ -81,7 +81,13 @@
   }
   .chip.sel { background: var(--brown); color: #fff; border-color: var(--brown); font-weight: 700; }
   .chip.sm { padding: 6px 11px; font-size: 13px; }
-  .chip .n { font-size: 12px; opacity: .8; margin-left: 4px; display: inline-block; min-width: 2.6em; text-align: right; font-variant-numeric: tabular-nums; }
+  .chip .n { font-size: 12px; opacity: .8; margin-left: 4px; display: inline-block; min-width: 3.4em; text-align: right; font-variant-numeric: tabular-nums; }
+  /* 椪チップは折り返さず横スクロールの1行に固定する。
+     本数が3桁になってチップが広がっても、下の径級ボタンの位置が動かないようにするため */
+  #pileChips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  #pileChips::-webkit-scrollbar { display: none; }
+  #pileChips .chip { flex-shrink: 0; white-space: nowrap; }
+  #gridTitle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* ＋1 / −1 / 入力 の切替 */
   .seg { display: flex; border-radius: 10px; overflow: hidden; border: 1.5px solid var(--border); margin-top: 8px; }
@@ -182,7 +188,7 @@
   <div id="miniSummary"></div>
 
   <div class="card">
-    <h2>椪（タップで切り替え）</h2>
+    <h2>椪（タップで切り替え・横にスクロールできます）</h2>
     <div class="chips" id="pileChips"></div>
     <div class="seg">
       <button class="plus sel" id="segPlus" onclick="setMode('plus')">＋1</button>
@@ -192,7 +198,7 @@
   </div>
 
   <div class="card">
-    <h2 id="gridTitle">径級をタップして本数を数える（10〜13cmは1cm刻み・14cm以上は2cm刻み）</h2>
+    <h2 id="gridTitle">径級（10〜13cmは1cm刻み・14cm以上は2cm刻み）</h2>
     <div class="diaGrid" id="diaGrid"></div>
     <div class="customRow">
       <input type="number" id="customDia" step="1" min="1" inputmode="numeric" placeholder="62以上・その他の径級">
@@ -451,6 +457,7 @@ function createPile() {
   save(); renderAll();
   toast(pileName(p) + " を作成しました");
   showTab("record");
+  scrollChipIntoView();
 }
 function updatePile() {
   const p = curPile();
@@ -465,6 +472,11 @@ function updatePile() {
 function switchPile(id) {
   const s = curSite(); if (!s) return;
   s.activePileId = id; save(); renderAll();
+  scrollChipIntoView();
+}
+function scrollChipIntoView() {
+  const c = document.querySelector("#pileChips .chip.sel");
+  if (c && c.scrollIntoView) c.scrollIntoView({ inline: "center", block: "nearest" });
 }
 function deletePile(id) {
   const s = curSite(); if (!s) return;
@@ -513,10 +525,7 @@ function setMode(m) {
   document.getElementById("segMinus").classList.toggle("sel", m === "minus");
   document.getElementById("segSet").classList.toggle("sel", m === "set");
   document.body.className = "mode-" + m;
-  const t = document.getElementById("gridTitle");
-  t.textContent = m === "plus" ? "径級をタップして本数を数える（10〜13cmは1cm刻み・14cm以上は2cm刻み）"
-    : m === "minus" ? "径級をタップすると1本減らします"
-    : "径級をタップして本数を直接入力";
+  toast(m === "plus" ? "＋1モード: タップで1本追加" : m === "minus" ? "−1モード: タップで1本減らす" : "数値入力モード: タップで本数を入力");
 }
 // 触覚フィードバック。Androidは振動API、iPhone(Safari)はスイッチ切替の触覚を使う
 function haptic(pattern) {
