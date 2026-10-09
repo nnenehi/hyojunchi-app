@@ -1,4 +1,4 @@
-const CACHE = "yamauke-v1";
+const CACHE = "yamauke-v2";
 const ASSETS = ["./", "./index.html", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", e => {

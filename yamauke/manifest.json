@@ -1,7 +1,7 @@
 {
   "name": "山受け 椪径級カウント",
   "short_name": "山受け",
-  "description": "皆伐の山受けで、椪ごとに2cm刻みの径級別本数をカウントするアプリ",
+  "description": "皆伐の山受けで、椪ごとに径級別の本数をカウントするアプリ",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#f5f4f0",
