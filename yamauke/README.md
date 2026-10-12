@@ -24,7 +24,7 @@
 
 ### 方法1: 無料ホスティングに置く（おすすめ・完全なオフラインアプリになります）
 
-1. このフォルダの4ファイル（index.html / sw.js / manifest.json / icon.svg）を
+1. このフォルダのファイル一式（index.html / sw.js / manifest.json / アイコン画像）を
    [Netlify Drop](https://app.netlify.com/drop) にドラッグ＆ドロップするか、GitHub Pagesで公開する
 2. 発行されたURLをスマホのChrome/Safariで一度開く
 3. メニューから「ホーム画面に追加」を選ぶ
