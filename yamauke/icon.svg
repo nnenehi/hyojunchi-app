@@ -1,13 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#6b4a2b"/>
-  <g fill="#f3e7d3">
-    <circle cx="176" cy="346" r="58"/>
-    <circle cx="336" cy="346" r="58"/>
-    <circle cx="256" cy="212" r="58"/>
-  </g>
-  <g fill="#6b4a2b">
-    <circle cx="176" cy="346" r="22"/>
-    <circle cx="336" cy="346" r="22"/>
-    <circle cx="256" cy="212" r="22"/>
+  <!-- 椪（丸太を三角に積んだ木口）のピクトグラム。茶色の地に線だけの丸3つ -->
+  <rect width="512" height="512" rx="112" fill="#4a3220"/>
+  <g fill="none" stroke="#ffffff" stroke-width="22">
+    <circle cx="256" cy="176" r="76"/>
+    <circle cx="166" cy="334" r="76"/>
+    <circle cx="346" cy="334" r="76"/>
   </g>
 </svg>
