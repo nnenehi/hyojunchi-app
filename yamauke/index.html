@@ -21,6 +21,9 @@
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; }
+  /* 素早い連打で画面が拡大（ダブルタップズーム）したり文字が選択されたりしないようにする */
+  body { touch-action: manipulation; }
+  button, .chip, .diaBtn, .seg, nav { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   body {
     font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
     background: var(--bg); color: var(--text);
@@ -31,7 +34,7 @@
     padding: 10px 12px; position: sticky; top: 0; z-index: 20;
   }
   header h1 { font-size: 15px; margin: 0; font-weight: 600; }
-  #siteLabel { font-size: 12px; opacity: .9; margin-top: 2px; word-break: break-all; }
+  #siteLabel { font-size: 12px; opacity: .9; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* タブバー */
   nav {
@@ -78,7 +81,13 @@
   }
   .chip.sel { background: var(--brown); color: #fff; border-color: var(--brown); font-weight: 700; }
   .chip.sm { padding: 6px 11px; font-size: 13px; }
-  .chip .n { font-size: 12px; opacity: .8; margin-left: 4px; }
+  .chip .n { font-size: 12px; opacity: .8; margin-left: 4px; display: inline-block; min-width: 3.4em; text-align: right; font-variant-numeric: tabular-nums; }
+  /* 椪チップは折り返さず横スクロールの1行に固定する。
+     本数が3桁になってチップが広がっても、下の径級ボタンの位置が動かないようにするため */
+  #pileChips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  #pileChips::-webkit-scrollbar { display: none; }
+  #pileChips .chip { flex-shrink: 0; white-space: nowrap; }
+  #gridTitle { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
   /* ＋1 / −1 / 入力 の切替 */
   .seg { display: flex; border-radius: 10px; overflow: hidden; border: 1.5px solid var(--border); margin-top: 8px; }
@@ -97,15 +106,20 @@
     border: 1.5px solid var(--border); border-radius: 10px; background: #fff;
     color: var(--text); cursor: pointer; line-height: 1;
   }
-  .diaBtn:active { background: #efe8dd; }
+  .diaBtn:active, .diaBtn.flash { background: #e9dcc8; transform: scale(.93); }
+  .diaBtn { transition: transform .08s, background .08s; }
   body.mode-minus .diaBtn:active { background: #f3dcdc; }
   body.mode-set .diaBtn:active { background: #dde8f3; }
   .diaBtn .cnt {
     position: absolute; top: 3px; right: 4px; font-size: 12px; font-weight: 700;
     color: #fff; border-radius: 9px; padding: 1px 6px; min-width: 18px; background: var(--brown-light);
+    font-variant-numeric: tabular-nums;
   }
+  .diaBtn .cnt:empty { display: none; }
   .diaBtn.has { border-color: var(--brown-light); background: #fbf7f1; }
-  .diaBtn small { display: block; font-size: 10px; font-weight: 500; color: var(--muted); margin-top: 3px; }
+  .diaBtn small { display: block; font-size: 10px; font-weight: 500; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
+  /* iPhone用の触覚フィードバック（Safariはスイッチの切替で触覚が出る）。画面外に置く */
+  #hapticSwitch, #hapticLabel { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
   .customRow { display: flex; gap: 8px; margin-top: 8px; }
   .customRow input { flex: 1; }
 
@@ -174,7 +188,7 @@
   <div id="miniSummary"></div>
 
   <div class="card">
-    <h2>椪（タップで切り替え）</h2>
+    <h2>椪（タップで切り替え・横にスクロールできます）</h2>
     <div class="chips" id="pileChips"></div>
     <div class="seg">
       <button class="plus sel" id="segPlus" onclick="setMode('plus')">＋1</button>
@@ -184,10 +198,10 @@
   </div>
 
   <div class="card">
-    <h2 id="gridTitle">径級をタップして本数を数える（cm・2cm刻み）</h2>
+    <h2 id="gridTitle">径級（10〜13cmは1cm刻み・14cm以上は2cm刻み）</h2>
     <div class="diaGrid" id="diaGrid"></div>
     <div class="customRow">
-      <input type="number" id="customDia" step="2" min="2" inputmode="numeric" placeholder="62以上・その他の径級">
+      <input type="number" id="customDia" step="1" min="1" inputmode="numeric" placeholder="62以上・その他の径級">
       <button class="btn" onclick="addCustom()">＋1</button>
     </div>
     <button class="btn gray full" onclick="undoLast()">↩ 直前の操作を取り消す</button>
@@ -275,7 +289,7 @@
     <button class="btn outline full" onclick="exportJSON()">全データをバックアップ（JSON）</button>
     <label class="fld" style="margin-top:12px;">バックアップ（JSON）から復元</label>
     <input type="file" id="importFile" accept=".json" onchange="importJSON(this)">
-    <p class="hint">CSVはExcelでそのまま開けます（UTF-8 BOM付き）。径級は10〜60cmをすべて（0本も含めて）出力するので、Excelの集計表にそのまま貼り付けられます。機種変更や紛失に備え、作業後はCSVかJSONを出力してください。</p>
+    <p class="hint">CSVはExcelでそのまま開けます（UTF-8 BOM付き）。径級は10〜60cm（10〜13cmは1cm刻み・14cm以上は2cm刻み）をすべて（0本も含めて）出力するので、Excelの集計表にそのまま貼り付けられます。機種変更や紛失に備え、作業後はCSVかJSONを出力してください。</p>
   </div>
 </div>
 
@@ -287,6 +301,8 @@
 </nav>
 
 <div id="toast"></div>
+<input type="checkbox" switch id="hapticSwitch" tabindex="-1" aria-hidden="true">
+<label for="hapticSwitch" id="hapticLabel" aria-hidden="true"></label>
 
 <!-- 本数の直接入力モーダル -->
 <div id="overlay" onclick="if(event.target===this) closeModal()">
@@ -303,7 +319,19 @@
 <script>
 "use strict";
 const KEY = "yamauke_v1";
-const DIA_MIN = 10, DIA_MAX = 60;
+// 径級クラス: 10〜13cmは1cm刻み、14〜60cmは2cm刻み
+const DIA_MIN = 10, DIA_STEP2_FROM = 14, DIA_MAX = 60;
+const DIA_CLASSES = (() => {
+  const a = [];
+  for (let d = DIA_MIN; d < DIA_STEP2_FROM; d++) a.push(d);
+  for (let d = DIA_STEP2_FROM; d <= DIA_MAX; d += 2) a.push(d);
+  return a;
+})();
+// 入力された径級を刻みに合わせて丸める
+function normDia(d) {
+  d = d < DIA_STEP2_FROM ? Math.round(d) : Math.round(d / 2) * 2;
+  return Math.max(1, d);
+}
 const BASE_PRESETS = {
   uses: ["一般材", "柱材", "合板材", "パルプ", "チップ"],
   lengths: ["3.65m", "4.0m", "3.0m", "2.4m", "2.0m", "1.8m"],
@@ -352,10 +380,9 @@ function pileName(p) {
 function siteName(s) {
   return [s.yama, s.rinpan].filter(Boolean).join(" / ") || "(名称未設定)";
 }
-// 10〜60cm に加え、60cm超で本数のある径級も昇順で並べる
+// 標準の径級クラスに加え、それ以外（60cm超など）で本数のある径級も昇順で並べる
 function diaList(piles) {
-  const set = new Set();
-  for (let d = DIA_MIN; d <= DIA_MAX; d += 2) set.add(d);
+  const set = new Set(DIA_CLASSES);
   piles.forEach(p => Object.keys(p.counts).forEach(k => { if (p.counts[k] > 0) set.add(+k); }));
   return [...set].sort((a, b) => a - b);
 }
@@ -430,6 +457,7 @@ function createPile() {
   save(); renderAll();
   toast(pileName(p) + " を作成しました");
   showTab("record");
+  scrollChipIntoView();
 }
 function updatePile() {
   const p = curPile();
@@ -444,6 +472,11 @@ function updatePile() {
 function switchPile(id) {
   const s = curSite(); if (!s) return;
   s.activePileId = id; save(); renderAll();
+  scrollChipIntoView();
+}
+function scrollChipIntoView() {
+  const c = document.querySelector("#pileChips .chip.sel");
+  if (c && c.scrollIntoView) c.scrollIntoView({ inline: "center", block: "nearest" });
 }
 function deletePile(id) {
   const s = curSite(); if (!s) return;
@@ -492,10 +525,19 @@ function setMode(m) {
   document.getElementById("segMinus").classList.toggle("sel", m === "minus");
   document.getElementById("segSet").classList.toggle("sel", m === "set");
   document.body.className = "mode-" + m;
-  const t = document.getElementById("gridTitle");
-  t.textContent = m === "plus" ? "径級をタップして本数を数える（cm・2cm刻み）"
-    : m === "minus" ? "径級をタップすると1本減らします"
-    : "径級をタップして本数を直接入力";
+  toast(m === "plus" ? "＋1モード: タップで1本追加" : m === "minus" ? "−1モード: タップで1本減らす" : "数値入力モード: タップで本数を入力");
+}
+// 触覚フィードバック。Androidは振動API、iPhone(Safari)はスイッチ切替の触覚を使う
+function haptic(pattern) {
+  try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
+  try { document.getElementById("hapticLabel").click(); } catch (e) {}
+}
+// タップしたボタンを一瞬へこませる（再描画に頼らない視覚フィードバック）
+function flashDia(dia) {
+  const b = document.querySelector('.diaBtn[data-dia="' + dia + '"]');
+  if (!b) return;
+  b.classList.add("flash");
+  clearTimeout(b._fl); b._fl = setTimeout(() => b.classList.remove("flash"), 120);
 }
 function tapDia(dia) {
   const p = curPile();
@@ -504,8 +546,9 @@ function tapDia(dia) {
   const before = p.counts[dia] || 0;
   let after = mode === "plus" ? before + 1 : before - 1;
   if (after < 0) { toast(dia + "cm は 0本です"); return; }
+  haptic(mode === "plus" ? 30 : [30, 40, 30]);
+  flashDia(dia);
   applyCount(p, dia, after, before);
-  if (navigator.vibrate) navigator.vibrate(mode === "plus" ? 30 : [30, 40, 30]);
   toast(dia + "cm " + (mode === "plus" ? "＋1" : "−1") + " → " + after + "本（椪合計 " + pileTotal(p) + "本）");
 }
 function applyCount(p, dia, after, before) {
@@ -518,8 +561,7 @@ function addCustom() {
   const el = document.getElementById("customDia");
   let d = parseFloat(el.value);
   if (!d || d <= 0) { toast("径級を入力してください"); return; }
-  d = Math.round(d / 2) * 2;  // 2cm刻みに丸め
-  if (d < 2) d = 2;
+  d = normDia(d);
   el.value = "";
   const prev = mode; mode = "plus";
   tapDia(d);
@@ -574,16 +616,7 @@ function renderAll() {
   chips += `<button class="chip" onclick="showTab('pile');document.getElementById('pUse').focus()">＋椪を追加</button>`;
   document.getElementById("pileChips").innerHTML = chips;
 
-  // 径級グリッド
-  const counts = p ? p.counts : {};
-  let grid = "";
-  diaList(p ? [p] : []).forEach(d => {
-    const c = counts[d] || 0;
-    grid += `<button class="diaBtn ${c ? "has" : ""}" onclick="tapDia(${d})">${d}` +
-      (c ? `<span class="cnt">${c}</span>` : "") +
-      `<small>${c}本</small></button>`;
-  });
-  document.getElementById("diaGrid").innerHTML = grid;
+  renderGrid(p);
 
   renderMini(s, p);
   renderPileSummary(s);
@@ -613,6 +646,28 @@ function renderAll() {
       document.getElementById("pNo").value = nextPileNo(s);
     }
   }
+}
+
+// 径級グリッド。ボタンの並びが変わらない限りHTMLを作り直さず、本数の表示だけ更新する
+// （作り直すと指の下のボタンが差し替わって、ちらつきや画面のずれの原因になる）
+let gridKey = null;
+function renderGrid(p) {
+  const el = document.getElementById("diaGrid");
+  const counts = p ? p.counts : {};
+  const dias = diaList(p ? [p] : []);
+  const key = (p ? p.id : "-") + "|" + dias.join(",");
+  if (key !== gridKey) {
+    el.innerHTML = dias.map(d =>
+      `<button class="diaBtn" data-dia="${d}" onclick="tapDia(${d})">${d}<span class="cnt"></span><small></small></button>`
+    ).join("");
+    gridKey = key;
+  }
+  el.querySelectorAll(".diaBtn").forEach(b => {
+    const c = counts[b.dataset.dia] || 0;
+    b.classList.toggle("has", c > 0);
+    b.querySelector(".cnt").textContent = c ? c : "";
+    b.querySelector("small").textContent = c + "本";
+  });
 }
 
 function renderMini(s, p) {
