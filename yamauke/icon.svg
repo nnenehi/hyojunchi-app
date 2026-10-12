@@ -1,13 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#6b4a2b"/>
-  <g fill="#f3e7d3">
-    <circle cx="176" cy="346" r="58"/>
-    <circle cx="336" cy="346" r="58"/>
-    <circle cx="256" cy="212" r="58"/>
+  <!-- 丸太の木口（断面）と、径を測る線 -->
+  <rect width="512" height="512" rx="112" fill="#6b4a2b"/>
+  <circle cx="256" cy="256" r="178" fill="#b07a44"/>
+  <circle cx="256" cy="256" r="152" fill="#f5e6c8"/>
+  <g fill="none" stroke="#d2ad78" stroke-width="12">
+    <circle cx="256" cy="256" r="112"/>
+    <circle cx="256" cy="256" r="72"/>
+    <circle cx="256" cy="256" r="34"/>
   </g>
-  <g fill="#6b4a2b">
-    <circle cx="176" cy="346" r="22"/>
-    <circle cx="336" cy="346" r="22"/>
-    <circle cx="256" cy="212" r="22"/>
+  <g stroke="#2d5a3d" stroke-width="22" stroke-linecap="round">
+    <line x1="104" y1="256" x2="408" y2="256"/>
+    <line x1="104" y1="214" x2="104" y2="298"/>
+    <line x1="408" y1="214" x2="408" y2="298"/>
   </g>
 </svg>
