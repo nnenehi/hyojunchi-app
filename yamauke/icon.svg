@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- 椪（丸太を三角に積んだ木口）。三つ鱗のように丸3つが接して中央を占める -->
+  <!-- 椪（丸太を三角に積んだ木口）のピクトグラム。茶色の地に線だけの丸3つ -->
   <rect width="512" height="512" rx="112" fill="#4a3220"/>
-  <g id="logs" fill="none" stroke="#ffffff" stroke-width="22">
-    <circle cx="256" cy="161.6" r="98"/>
-    <circle cx="147.0" cy="350.4" r="98"/>
-    <circle cx="365.0" cy="350.4" r="98"/>
+  <g fill="none" stroke="#ffffff" stroke-width="22">
+    <circle cx="256" cy="176" r="76"/>
+    <circle cx="166" cy="334" r="76"/>
+    <circle cx="346" cy="334" r="76"/>
   </g>
 </svg>
