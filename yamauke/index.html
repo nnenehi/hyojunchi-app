@@ -540,15 +540,26 @@ function haptic(pattern) {
   try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
 }
 // iPhone用: ボタン全面を覆う透明ラベル＋隠しスイッチ。スイッチ自身のclickはボタンへ伝えない（二重カウント防止）
-function hapticOverlay() {
+function hapticOverlay(dia) {
   if (!IS_IOS) return "";
-  return `<label class="hapticTrigger" aria-hidden="true"><input type="checkbox" switch tabindex="-1" onclick="event.stopPropagation()"></label>`;
+  return `<label class="hapticTrigger" aria-hidden="true" onclick="hapticGate(event,${dia})"><input type="checkbox" switch tabindex="-1" onclick="event.stopPropagation()"></label>`;
+}
+// 触覚は「直前にカウントが成立したタップ」のときだけ許可する。
+// iOS Safari はボタンの隙間をタップしても近くのスイッチにタップを寄せてしまうため、
+// カウントの伴わない click ではスイッチの切り替え（＝触覚）を止める
+let hapticArmed = { dia: null, t: 0 };
+function armHaptic(dia) { hapticArmed = { dia, t: Date.now() }; }
+function hapticGate(e, dia) {
+  if (hapticArmed.dia === dia && Date.now() - hapticArmed.t < 350) { hapticArmed.t = 0; return; }
+  e.preventDefault();
 }
 // 径級ボタンのタップ判定。click（指を離してから遅れて発火）を待たず、
 // pointerup の瞬間にカウントする。押している間に指が動いたら（スクロール）数えない
 let ptr = null;
 function diaDown(e, dia) {
   if (e.pointerType === "mouse" && e.button !== 0) return;
+  const r = e.currentTarget.getBoundingClientRect();
+  if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
   ptr = { id: e.pointerId, x: e.clientX, y: e.clientY, dia };
   const b = e.currentTarget; b.classList.add("flash");
 }
@@ -571,6 +582,7 @@ function tapDia(dia) {
   let after = mode === "plus" ? before + 1 : before - 1;
   if (after < 0) { toast(dia + "cm は 0本です"); return; }
   haptic(mode === "plus" ? 30 : [30, 40, 30]);
+  armHaptic(dia);
   applyCount(p, dia, after, before);
   toast(dia + "cm " + (mode === "plus" ? "＋1" : "−1") + " → " + after + "本（椪合計 " + pileTotal(p) + "本）");
 }
@@ -703,7 +715,7 @@ function renderGrid(p) {
   const key = (p ? p.id : "-") + "|" + dias.join(",");
   if (key !== gridKey) {
     el.innerHTML = dias.map(d =>
-      `<button class="diaBtn" data-dia="${d}" onpointerdown="diaDown(event,${d})" onpointerup="diaUp(event,${d})" onpointercancel="diaCancel(event)" onpointerleave="diaCancel(event)">${d}<span class="cnt"></span><small></small>${hapticOverlay()}</button>`
+      `<button class="diaBtn" data-dia="${d}" onpointerdown="diaDown(event,${d})" onpointerup="diaUp(event,${d})" onpointercancel="diaCancel(event)" onpointerleave="diaCancel(event)">${d}<span class="cnt"></span><small></small>${hapticOverlay(d)}</button>`
     ).join("");
     gridKey = key;
   }
