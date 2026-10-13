@@ -1,4 +1,4 @@
-const CACHE = "yamauke-v3";
+const CACHE = "yamauke-v4";
 const ASSETS = ["./", "./index.html", "./manifest.json", "./icon.svg", "./apple-touch-icon.png", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
