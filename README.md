@@ -12,11 +12,24 @@
 - **データ保持**: すべて端末内（ブラウザのlocalStorage）に自動保存。電波がなくても動作し、アプリを閉じてもデータは消えません
 - **出力**: CSV出力（Excel対応・BOM付きUTF-8）、JSONバックアップ／復元
 
+## スマホに入れる（ダウンロード）
+
+アプリストアではなく、ブラウザから「ホーム画面に追加」で入れるアプリです。
+
+**アプリのURL**: https://nnenehi.github.io/hyojunchi-app/
+（山受けアプリ: https://nnenehi.github.io/hyojunchi-app/yamauke/ ）
+
+- **iPhone**: **Safari** で上のURLを開く → 下の共有ボタン（□に↑）→「ホーム画面に追加」→「追加」
+- **Android**: **Chrome** で上のURLを開く → 右上の「︙」→「ホーム画面に追加」（または「アプリをインストール」）→「インストール」
+
+ホーム画面のアイコンから起動すると全画面のアプリとして動き、一度開いた後は電波のない山の中でも使えます。
+URLが開けない場合は、GitHubのリポジトリ設定 → Pages で「Deploy from a branch / main / (root)」になっているか確認してください。
+
 ## スマホでの使い方
 
 ### 方法1: 無料ホスティングに置く（おすすめ・完全なオフラインアプリになります）
 
-1. このフォルダの4ファイル（index.html / sw.js / manifest.json / icon.svg）を
+1. このフォルダのファイル（index.html / sw.js / manifest.json / icon.svg / 各PNGアイコン）を
    [Netlify Drop](https://app.netlify.com/drop) にドラッグ＆ドロップするか、GitHub Pagesで公開する
 2. 発行されたURLをスマホのChrome/Safariで一度開く
 3. メニューから「ホーム画面に追加」を選ぶ
