@@ -312,7 +312,7 @@
 <div id="toast"></div>
 
 <!-- 本数の直接入力モーダル -->
-<div id="overlay" onclick="if(event.target===this) closeModal()">
+<div id="overlay" onclick="if(event.target===this) closeModalByTap()">
   <div id="modal">
     <h3 id="modalTitle">本数を入力</h3>
     <input type="number" id="eCount" class="bigNum" inputmode="numeric" min="0">
@@ -544,12 +544,24 @@ function hapticOverlay() {
   if (!IS_IOS) return "";
   return `<label class="hapticTrigger" aria-hidden="true"><input type="checkbox" switch tabindex="-1" onclick="event.stopPropagation()"></label>`;
 }
-// タップしたボタンを一瞬へこませる（再描画に頼らない視覚フィードバック）
-function flashDia(dia) {
-  const b = document.querySelector('.diaBtn[data-dia="' + dia + '"]');
-  if (!b) return;
-  b.classList.add("flash");
-  clearTimeout(b._fl); b._fl = setTimeout(() => b.classList.remove("flash"), 120);
+// 径級ボタンのタップ判定。click（指を離してから遅れて発火）を待たず、
+// pointerup の瞬間にカウントする。押している間に指が動いたら（スクロール）数えない
+let ptr = null;
+function diaDown(e, dia) {
+  if (e.pointerType === "mouse" && e.button !== 0) return;
+  ptr = { id: e.pointerId, x: e.clientX, y: e.clientY, dia };
+  const b = e.currentTarget; b.classList.add("flash");
+}
+function diaUp(e, dia) {
+  const b = e.currentTarget; b.classList.remove("flash");
+  if (!ptr || ptr.id !== e.pointerId || ptr.dia !== dia) { ptr = null; return; }
+  const moved = Math.hypot(e.clientX - ptr.x, e.clientY - ptr.y) > 12;
+  ptr = null;
+  if (!moved) tapDia(dia);
+}
+function diaCancel(e) {
+  e.currentTarget.classList.remove("flash");
+  ptr = null;
 }
 function tapDia(dia) {
   const p = curPile();
@@ -559,7 +571,6 @@ function tapDia(dia) {
   let after = mode === "plus" ? before + 1 : before - 1;
   if (after < 0) { toast(dia + "cm は 0本です"); return; }
   haptic(mode === "plus" ? 30 : [30, 40, 30]);
-  flashDia(dia);
   applyCount(p, dia, after, before);
   toast(dia + "cm " + (mode === "plus" ? "＋1" : "−1") + " → " + after + "本（椪合計 " + pileTotal(p) + "本）");
 }
@@ -567,7 +578,7 @@ function applyCount(p, dia, after, before) {
   if (after > 0) p.counts[dia] = after; else delete p.counts[dia];
   undoStack.push({ pileId: p.id, dia, before });
   if (undoStack.length > 100) undoStack.shift();
-  save(); renderAll();
+  save(); renderCounts();
 }
 function addCustom() {
   const el = document.getElementById("customDia");
@@ -586,14 +597,20 @@ function undoLast() {
   const p = s.piles.find(x => x.id === u.pileId);
   if (!p) { toast("取り消せる操作がありません"); return; }
   if (u.before > 0) p.counts[u.dia] = u.before; else delete p.counts[u.dia];
-  save(); renderAll();
+  save(); renderCounts();
   toast(u.dia + "cm を " + u.before + "本に戻しました");
 }
 
 /* ───── 本数入力モーダル ───── */
+let modalOpenedAt = 0;
+// 背景タップで閉じる。ただし開いた直後の click（径級ボタンの pointerup 直後に飛んでくる分）は無視する
+function closeModalByTap() {
+  if (Date.now() - modalOpenedAt < 400) return;
+  closeModal();
+}
 function openEdit(dia) {
   const p = curPile(); if (!p) return;
-  editDia = dia;
+  editDia = dia; modalOpenedAt = Date.now();
   document.getElementById("modalTitle").textContent = pileName(p) + "　" + dia + "cm の本数";
   const inp = document.getElementById("eCount");
   inp.value = p.counts[dia] || 0;
@@ -614,23 +631,39 @@ function closeModal() {
 }
 
 /* ───── 描画 ───── */
-function renderAll() {
+// カウント時に必要な分だけ描き直す（記録タブの表示要素のみ）
+function renderCounts() {
   const s = curSite(), p = curPile();
   document.getElementById("siteLabel").textContent =
     s ? siteName(s) + "（椪" + s.piles.length + "・" + siteTotal(s) + "本）" + (p ? "　▶ " + pileName(p) : "")
       : "現場未設定 — 「現場」タブから作成してください";
-
-  // 椪チップ
-  let chips = "";
-  if (s) chips = s.piles.map(x =>
-    `<button class="chip ${p && x.id === p.id ? "sel" : ""}" onclick="switchPile('${x.id}')">${esc(pileName(x))}<span class="n">${pileTotal(x)}本</span></button>`
-  ).join("");
-  chips += `<button class="chip" onclick="showTab('pile');document.getElementById('pUse').focus()">＋椪を追加</button>`;
-  document.getElementById("pileChips").innerHTML = chips;
-
+  renderChips(s, p);
   renderGrid(p);
-
   renderMini(s, p);
+}
+
+// 椪チップ。椪の並びが変わらない限り作り直さず、本数と選択状態だけ更新する（横スクロール位置を保つため）
+let chipsKey = null;
+function renderChips(s, p) {
+  const el = document.getElementById("pileChips");
+  const piles = s ? s.piles : [];
+  const key = piles.map(x => x.id + ":" + pileName(x)).join("|");
+  if (key !== chipsKey) {
+    el.innerHTML = piles.map(x =>
+      `<button class="chip" data-pile="${x.id}" onclick="switchPile('${x.id}')">${esc(pileName(x))}<span class="n"></span></button>`
+    ).join("") + `<button class="chip" onclick="showTab('pile');document.getElementById('pUse').focus()">＋椪を追加</button>`;
+    chipsKey = key;
+  }
+  piles.forEach(x => {
+    const c = el.querySelector(`.chip[data-pile="${x.id}"]`);
+    c.classList.toggle("sel", !!p && x.id === p.id);
+    c.querySelector(".n").textContent = pileTotal(x) + "本";
+  });
+}
+
+function renderAll() {
+  const s = curSite(), p = curPile();
+  renderCounts();
   renderPileSummary(s);
   renderDist(s);
   renderPileList(s);
@@ -670,7 +703,7 @@ function renderGrid(p) {
   const key = (p ? p.id : "-") + "|" + dias.join(",");
   if (key !== gridKey) {
     el.innerHTML = dias.map(d =>
-      `<button class="diaBtn" data-dia="${d}" onclick="tapDia(${d})">${d}<span class="cnt"></span><small></small>${hapticOverlay()}</button>`
+      `<button class="diaBtn" data-dia="${d}" onpointerdown="diaDown(event,${d})" onpointerup="diaUp(event,${d})" onpointercancel="diaCancel(event)" onpointerleave="diaCancel(event)">${d}<span class="cnt"></span><small></small>${hapticOverlay()}</button>`
     ).join("");
     gridKey = key;
   }
