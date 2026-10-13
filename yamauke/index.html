@@ -123,8 +123,12 @@
   .diaBtn .cnt:empty { display: none; }
   .diaBtn.has { border-color: var(--brown-light); background: #fbf7f1; }
   .diaBtn small { display: block; font-size: 10px; font-weight: 500; color: var(--muted); margin-top: 3px; font-variant-numeric: tabular-nums; }
-  /* iPhone用の触覚フィードバック（Safariはスイッチの切替で触覚が出る）。画面外に置く */
-  #hapticSwitch, #hapticLabel { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+  /* iPhone用の触覚フィードバック。
+     iOSはWebから振動を鳴らせないが、スイッチ型チェックボックスを「指で」切り替えると触覚が出る。
+     JavaScriptから切り替える方法は iOS 26.5 で塞がれたため、径級ボタンの上に透明なラベルを重ね、
+     本物のタップでスイッチを切り替える（タップ自体はラベルからボタンへ伝わるのでカウントも動く） */
+  .hapticTrigger { position: absolute; inset: 0; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+  .hapticTrigger input { position: absolute; width: 1px; height: 1px; margin: 0; visibility: hidden; }
   .customRow { display: flex; gap: 8px; margin-top: 8px; }
   .customRow input { flex: 1; }
 
@@ -306,8 +310,6 @@
 </nav>
 
 <div id="toast"></div>
-<input type="checkbox" switch id="hapticSwitch" tabindex="-1" aria-hidden="true">
-<label for="hapticSwitch" id="hapticLabel" aria-hidden="true"></label>
 
 <!-- 本数の直接入力モーダル -->
 <div id="overlay" onclick="if(event.target===this) closeModal()">
@@ -532,10 +534,15 @@ function setMode(m) {
   document.body.className = "mode-" + m;
   toast(m === "plus" ? "＋1モード: タップで1本追加" : m === "minus" ? "−1モード: タップで1本減らす" : "数値入力モード: タップで本数を入力");
 }
-// 触覚フィードバック。Androidは振動API、iPhone(Safari)はスイッチ切替の触覚を使う
+// 触覚フィードバック（Android: 振動API）。iPhoneはボタンに重ねたスイッチ（renderGrid参照）で鳴らす
+const IS_IOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 function haptic(pattern) {
   try { if (navigator.vibrate) navigator.vibrate(pattern); } catch (e) {}
-  try { document.getElementById("hapticLabel").click(); } catch (e) {}
+}
+// iPhone用: ボタン全面を覆う透明ラベル＋隠しスイッチ。スイッチ自身のclickはボタンへ伝えない（二重カウント防止）
+function hapticOverlay() {
+  if (!IS_IOS) return "";
+  return `<label class="hapticTrigger" aria-hidden="true"><input type="checkbox" switch tabindex="-1" onclick="event.stopPropagation()"></label>`;
 }
 // タップしたボタンを一瞬へこませる（再描画に頼らない視覚フィードバック）
 function flashDia(dia) {
@@ -663,7 +670,7 @@ function renderGrid(p) {
   const key = (p ? p.id : "-") + "|" + dias.join(",");
   if (key !== gridKey) {
     el.innerHTML = dias.map(d =>
-      `<button class="diaBtn" data-dia="${d}" onclick="tapDia(${d})">${d}<span class="cnt"></span><small></small></button>`
+      `<button class="diaBtn" data-dia="${d}" onclick="tapDia(${d})">${d}<span class="cnt"></span><small></small>${hapticOverlay()}</button>`
     ).join("");
     gridKey = key;
   }
