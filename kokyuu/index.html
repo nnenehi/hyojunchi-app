@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#1f4d44">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="一呼吸">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>一呼吸チェック</title>
+<style>
+  :root {
+    --main: #1f4d44;
+    --main-light: #2f7366;
+    --ok: #2e7d4f;     --ok-bg: #e4f3e9;
+    --warn: #b57a00;   --warn-bg: #fff2cc;
+    --danger: #c0392b; --danger-bg: #fbe1dd;
+    --none: #8a948f;   --none-bg: #eceeed;
+    --fat: #2f5f8f;    /* 疲労 = 青 */
+    --hur: #d2691e;    /* 焦り = 橙 */
+    --bg: #f2f5f3; --card: #fff; --border: #d6ddd9;
+    --text: #1d2723; --muted: #66746d;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "Hiragino Sans", "Yu Gothic UI", "Meiryo", sans-serif;
+    background: var(--bg); color: var(--text);
+    padding-bottom: 76px; touch-action: manipulation;
+  }
+  button, nav { -webkit-user-select: none; user-select: none; }
+  header { background: var(--main); color: #fff; padding: 10px 14px; position: sticky; top: 0; z-index: 20; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 700; }
+  header .sub { font-size: 12px; opacity: .85; margin-top: 2px; }
+
+  nav {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 30; display: flex;
+    background: #fff; border-top: 1px solid var(--border); padding-bottom: env(safe-area-inset-bottom);
+  }
+  nav button { flex: 1; padding: 12px 0 10px; border: none; background: none; font-size: 13px; color: var(--muted); cursor: pointer; }
+  nav button.active { color: var(--main); font-weight: 700; border-top: 3px solid var(--main); margin-top: -1px; }
+
+  .tab { display: none; padding: 12px; max-width: 560px; margin: 0 auto; }
+  .tab.active { display: block; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+  .card h2 { font-size: 15px; margin: 0 0 8px; }
+  .muted { color: var(--muted); font-size: 12px; line-height: 1.5; }
+
+  /* リマインドバナー */
+  #banner { display: none; background: var(--warn-bg); border: 2px solid var(--warn); color: #5c3f00;
+    border-radius: 12px; padding: 12px; margin-bottom: 12px; font-weight: 700; font-size: 15px; }
+  #banner.show { display: block; }
+  #banner button { margin-top: 8px; }
+
+  /* 設問 */
+  .qgroup-title { font-size: 15px; font-weight: 700; margin: 4px 0 8px; display: flex; align-items: center; gap: 8px; }
+  .dot { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+  .q { margin-bottom: 14px; }
+  .q .qt { font-size: 15px; margin-bottom: 6px; line-height: 1.4; }
+  .opts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .opt {
+    min-height: 56px; border: 2px solid var(--border); background: #fff; border-radius: 12px;
+    font-size: 16px; font-weight: 600; color: var(--text); cursor: pointer;
+  }
+  .opt.sel0 { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+  .opt.sel1 { background: var(--warn-bg); border-color: var(--warn); color: #7a5300; }
+  .opt.sel2 { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
+
+  .btn { width: 100%; min-height: 56px; border: none; border-radius: 12px; font-size: 17px; font-weight: 700; cursor: pointer;
+    background: var(--main); color: #fff; }
+  .btn:disabled { background: #b9c4bf; cursor: default; }
+  .btn.sub { background: #fff; color: var(--main); border: 2px solid var(--main); }
+  .btn.sm { min-height: 44px; font-size: 14px; width: auto; padding: 0 14px; }
+  .btn.danger { background: #fff; color: var(--danger); border: 2px solid var(--danger); }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row > .btn { flex: 1; }
+  input[type=text], input[type=time], input[type=number] {
+    font-size: 16px; padding: 10px; border: 1px solid var(--border); border-radius: 8px; width: 100%; background: #fff; color: var(--text);
+  }
+
+  /* 結果 */
+  .scores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .score { border-radius: 12px; padding: 12px 8px; text-align: center; border: 2px solid; }
+  .score .lab { font-size: 13px; font-weight: 700; }
+  .score .num { font-size: 40px; font-weight: 800; line-height: 1.1; }
+  .score .num small { font-size: 16px; font-weight: 600; }
+  .score .lv { font-size: 14px; font-weight: 700; }
+  .lv0 { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+  .lv1 { background: var(--warn-bg); border-color: var(--warn); color: #7a5300; }
+  .lv2 { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
+  .lvn { background: var(--none-bg); border-color: var(--none); color: var(--none); }
+  .advice { background: #fff; border-left: 6px solid var(--main); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px; font-size: 15px; line-height: 1.6; }
+  .advice.lv1 { border-left-color: var(--warn); }
+  .advice.lv2 { border-left-color: var(--danger); }
+  .advice b { display: block; margin-bottom: 4px; }
+  .advice ul { margin: 4px 0 0; padding-left: 20px; }
+
+  /* 推移 */
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { padding: 8px 4px; text-align: center; border-bottom: 1px solid var(--border); }
+  th { font-size: 12px; color: var(--muted); font-weight: 600; }
+  td.t { font-weight: 700; text-align: left; }
+  .pill { display: inline-block; min-width: 44px; padding: 4px 8px; border-radius: 999px; font-weight: 700; font-size: 14px; }
+  .legend { display: flex; gap: 14px; font-size: 12px; margin: 4px 0 6px; flex-wrap: wrap; }
+  .legend span::before { content: ""; display: inline-block; width: 14px; height: 4px; margin-right: 4px; vertical-align: middle; border-radius: 2px; background: currentColor; }
+  .hist { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; }
+  .hist .when { flex: 1; }
+  .hist .del { border: none; background: none; color: var(--muted); font-size: 18px; padding: 8px; cursor: pointer; }
+  .field { margin-bottom: 10px; }
+  .field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+  .timeRow { display: flex; gap: 8px; margin-bottom: 8px; }
+  .timeRow input { flex: 1; }
+
+  /* 呼吸オーバーレイ */
+  #breath { display: none; position: fixed; inset: 0; z-index: 100; background: #14332d; color: #fff; flex-direction: column; align-items: center; justify-content: center; }
+  #breath.show { display: flex; }
+  #breath .circle { width: 180px; height: 180px; border-radius: 50%; background: #e8f5ec; opacity: .9; transform: scale(.55); }
+  #breath .word { font-size: 32px; font-weight: 700; margin-top: 36px; min-height: 44px; }
+  #breath .remain { font-size: 14px; opacity: .75; margin-top: 8px; }
+  #breath .skip { position: absolute; bottom: calc(24px + env(safe-area-inset-bottom)); background: none; border: 2px solid #ffffff88; color: #fff; border-radius: 12px; padding: 12px 28px; font-size: 15px; }
+
+  #toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%); background: #222c; color: #fff; padding: 10px 16px; border-radius: 20px; font-size: 14px; z-index: 200; display: none; max-width: 90%; text-align: center; }
+  #toast.show { display: block; }
+</style>
+</head>
+<body>
+<header>
+  <h1>一呼吸チェック</h1>
+  <div class="sub" id="clock"></div>
+</header>
+
+<!-- ============ チェック ============ -->
+<div class="tab active" id="tab-check">
+  <div id="banner"></div>
+
+  <div id="formView">
+    <div class="card">
+      <div class="muted" style="margin-bottom:8px">手を止めて、今の自分を正直に選んでください。点数をつけるのではなく「気づく」ためのチェックです。</div>
+      <div class="qgroup-title"><span class="dot" style="background:var(--fat)"></span>からだ・あたまの疲れ</div>
+      <div id="qFatigue"></div>
+      <div class="qgroup-title" style="margin-top:18px"><span class="dot" style="background:var(--hur)"></span>焦り</div>
+      <div id="qHurry"></div>
+      <div class="field"><input type="text" id="note" placeholder="メモ（任意）例: 伐倒前、斜面、雨" maxlength="80"></div>
+      <button class="btn" id="saveBtn" disabled>すべて選ぶと記録できます</button>
+    </div>
+    <button class="btn sub" onclick="startBreath()">🌬 30秒 一呼吸だけする</button>
+  </div>
+
+  <div id="resultView" style="display:none">
+    <div class="card">
+      <div class="scores" id="resScores"></div>
+      <div id="resAdvice"></div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn" onclick="startBreath()">🌬 30秒 一呼吸</button>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn sub" onclick="newCheck()">もう一度チェック</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="muted" style="margin:4px 4px 12px">※ 自己認識の目安であり、医学的な診断ではありません。しんどい時は無理をせず、班長・仲間に伝えて休みましょう。</div>
+</div>
+
+<!-- ============ 推移 ============ -->
+<div class="tab" id="tab-trend">
+  <div class="card">
+    <h2>今日の記録</h2>
+    <table id="todayTable"></table>
+  </div>
+  <div class="card">
+    <h2>推移（直近7日）</h2>
+    <div class="legend"><span style="color:var(--fat)">疲労</span><span style="color:var(--hur)">焦り</span><span style="color:var(--warn)">注意ライン</span><span style="color:var(--danger)">危険ライン</span></div>
+    <div id="chart"></div>
+    <div class="muted" id="chartNote"></div>
+  </div>
+  <div class="card">
+    <h2>記録一覧</h2>
+    <div id="histList"></div>
+  </div>
+</div>
+
+<!-- ============ 設定 ============ -->
+<div class="tab" id="tab-settings">
+  <div class="card">
+    <h2>リマインド時刻</h2>
+    <div id="timeList"></div>
+    <div class="row" style="margin-top:6px">
+      <button class="btn sub sm" onclick="addTime()">＋ 時刻を追加</button>
+    </div>
+    <div class="muted" style="margin-top:10px">
+      アプリを開いている間は、この時刻に画面と振動でお知らせします。時刻を過ぎてから開いた場合は未記録の枠をお知らせします。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>通知（アプリを閉じている時）</h2>
+    <div class="muted" style="margin-bottom:8px">
+      このアプリは電波のない山でも動くよう、サーバーを使いません。そのため<b>アプリを閉じている間は、指定時刻ぴったりの通知をアプリ単体では確実に出せません</b>。
+      確実に鳴らしたい場合は、下のボタンでカレンダー用ファイル(.ics)を保存し、スマホの標準カレンダーに取り込んでください（毎日繰り返しの予定になります）。
+    </div>
+    <div class="row">
+      <button class="btn sub" onclick="askNotify()">🔔 通知を許可する</button>
+      <button class="btn sub" onclick="exportIcs()">📅 カレンダー用(.ics)を保存</button>
+    </div>
+    <div class="muted" id="notifyState" style="margin-top:8px"></div>
+  </div>
+
+  <div class="card">
+    <h2>注意ラインの点数</h2>
+    <div class="muted" style="margin-bottom:8px">疲労・焦りはそれぞれ 0〜6点。以下の点数以上で色が変わります。</div>
+    <div class="row">
+      <div class="field" style="flex:1"><label>🟡 注意（点以上）</label><input type="number" id="thWarn" min="1" max="6" inputmode="numeric"></div>
+      <div class="field" style="flex:1"><label>🔴 危険（点以上）</label><input type="number" id="thDanger" min="1" max="6" inputmode="numeric"></div>
+    </div>
+    <div class="muted">初期値: 3点以上で注意、5点以上で危険。自分や班の感覚に合わせて調整してください。</div>
+  </div>
+
+  <div class="card">
+    <h2>データ</h2>
+    <div class="row">
+      <button class="btn sub" onclick="exportCsv()">CSV出力</button>
+      <button class="btn sub" onclick="exportJson()">バックアップ(JSON)</button>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <button class="btn sub" onclick="document.getElementById('importFile').click()">バックアップから復元</button>
+      <button class="btn danger" onclick="clearAll()">全記録を削除</button>
+    </div>
+    <input type="file" id="importFile" accept=".json,application/json" style="display:none">
+    <div class="muted" style="margin-top:8px">記録はこの端末のブラウザ内にだけ保存されます。ブラウザの閲覧データを消すと記録も消えます。</div>
+  </div>
+</div>
+
+<nav>
+  <button class="active" data-tab="check">チェック</button>
+  <button data-tab="trend">推移</button>
+  <button data-tab="settings">設定</button>
+</nav>
+
+<div id="breath">
+  <div class="circle" id="breathCircle"></div>
+  <div class="word" id="breathWord"></div>
+  <div class="remain" id="breathRemain"></div>
+  <button class="skip" onclick="stopBreath(false)">やめる</button>
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const KEY = "kokyuuV1";
+const DEFAULT_TIMES = ["10:00", "12:00", "14:00", "16:00"];
+const SLOT_WINDOW_MIN = 60; // 設定時刻の前後この分数以内なら、その枠の記録として扱う
+const Q_FATIGUE = ["体が重い・だるい", "集中が切れる・ぼんやりする", "判断が鈍い・同じミスをしそう"];
+const Q_HURRY = ["時間に追われている", "手順を飛ばしたい・飛ばしてしまった", "周りを見る余裕がない"];
+const OPT_LABELS = ["大丈夫", "ちょっと", "かなり"];
+const LV_NAMES = ["OK", "注意", "危険"];
+const LV_ICONS = ["🟢", "🟡", "🔴"];
+
+// ---------- 状態 ----------
+let state = load();
+function defaults() { return { settings: { times: DEFAULT_TIMES.slice(), warn: 3, danger: 5 }, records: [], fired: {} }; }
+function load() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    if (s && s.settings && Array.isArray(s.records)) {
+      const d = defaults();
+      s.settings = Object.assign(d.settings, s.settings);
+      s.fired = s.fired || {};
+      return s;
+    }
+  } catch (e) {}
+  return defaults();
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { toast("保存できませんでした（容量/設定を確認）"); } }
+
+// ---------- 小物 ----------
+const $ = id => document.getElementById(id);
+const pad = n => String(n).padStart(2, "0");
+function dateStr(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
+function hhmm(d) { return pad(d.getHours()) + ":" + pad(d.getMinutes()); }
+function toMin(t) { const [h, m] = t.split(":").map(Number); return h * 60 + m; }
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function sum(a) { return a.reduce((x, y) => x + y, 0); }
+let toastTimer;
+function toast(msg) { const t = $("toast"); t.textContent = msg; t.classList.add("show"); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove("show"), 2600); }
+function haptic(p) { try { if (navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
+function sortedTimes() { return state.settings.times.slice().sort((a, b) => toMin(a) - toMin(b)); }
+
+// しきい値 → 0:OK 1:注意 2:危険
+function level(score) {
+  const { warn, danger } = state.settings;
+  return score >= danger ? 2 : score >= warn ? 1 : 0;
+}
+
+// ---------- アドバイス ----------
+const ADVICE = {
+  fatigue: {
+    1: ["疲れが出始めています", ["水分と糖分をとる", "2〜3分座って、肩・首・手をほぐす", "次の作業は『ゆっくり確実に』を意識"]],
+    2: ["疲れが強く出ています", ["いったん作業を止めて休憩をとる", "水分・食べ物をとってから再開", "危険度の高い作業（伐倒・かかり木処理）は後回し、または代わってもらう", "班長・仲間に『疲れている』と伝える"]],
+  },
+  hurry: {
+    1: ["焦りが出始めています", ["深呼吸を一回（30秒の一呼吸もおすすめ）", "次にやることを声に出して順番に確認", "『急がば回れ』。手順は飛ばさない"]],
+    2: ["焦りが強く出ています", ["作業を止めて、一呼吸おく", "退路・受け口・周囲の人・かかり木の有無を指差し確認", "時間の遅れは班長に相談。無理に取り戻さない", "焦ったまま伐倒・機械操作はしない"]],
+  },
+  both: ["疲れと焦りが重なっています", ["最も事故につながりやすい状態です。一度作業を止めてください", "座って水分をとり、一呼吸", "再開前に、今日の作業計画と危険箇所を仲間と確認", "回復しない場合は作業内容を変えるか、切り上げる判断を"]],
+  ok: ["いまの状態は落ち着いています", ["この調子で。次のチェックまで、水分と休憩を忘れずに"]],
+};
+function adviceFor(fl, hl) {
+  if (fl >= 1 && hl >= 1) {
+    const base = ADVICE.both;
+    const lv = Math.max(fl, hl);
+    return { lv, title: base[0], items: base[1] };
+  }
+  if (fl >= 1) return { lv: fl, title: ADVICE.fatigue[fl][0], items: ADVICE.fatigue[fl][1] };
+  if (hl >= 1) return { lv: hl, title: ADVICE.hurry[hl][0], items: ADVICE.hurry[hl][1] };
+  return { lv: 0, title: ADVICE.ok[0], items: ADVICE.ok[1] };
+}
+
+// ---------- タブ ----------
+document.querySelectorAll("nav button").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
+function showTab(name) {
+  document.querySelectorAll("nav button").forEach(b => b.classList.toggle("active", b.dataset.tab === name));
+  document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.id === "tab-" + name));
+  if (name === "trend") renderTrend();
+  if (name === "settings") renderSettings();
+  if (name === "check") updateBanner();
+  window.scrollTo(0, 0);
+}
+
+// ---------- チェック画面 ----------
+let ansF = [null, null, null], ansH = [null, null, null];
+function renderQuestions() {
+  const build = (arr, qs, key) => arr.innerHTML = qs.map((q, i) => `
+    <div class="q"><div class="qt">${esc(q)}</div>
+      <div class="opts">${OPT_LABELS.map((l, v) => `<button class="opt ${(key === "f" ? ansF : ansH)[i] === v ? "sel" + v : ""}" data-k="${key}" data-i="${i}" data-v="${v}">${l}</button>`).join("")}</div>
+    </div>`).join("");
+  build($("qFatigue"), Q_FATIGUE, "f");
+  build($("qHurry"), Q_HURRY, "h");
+  updateSaveBtn();
+}
+document.addEventListener("click", e => {
+  const b = e.target.closest(".opt");
+  if (!b) return;
+  const arr = b.dataset.k === "f" ? ansF : ansH;
+  arr[+b.dataset.i] = +b.dataset.v;
+  haptic(8);
+  renderQuestions();
+});
+function updateSaveBtn() {
+  const done = ansF.every(v => v !== null) && ansH.every(v => v !== null);
+  const btn = $("saveBtn");
+  btn.disabled = !done;
+  btn.textContent = done ? "記録して判定を見る" : "すべて選ぶと記録できます";
+}
+$("saveBtn").addEventListener("click", () => {
+  const now = new Date();
+  const rec = {
+    id: now.getTime(), ts: now.getTime(), date: dateStr(now),
+    slot: nearestSlot(now), fatigue: ansF.slice(), hurry: ansH.slice(), note: $("note").value.trim()
+  };
+  state.records.push(rec);
+  save();
+  showResult(rec);
+  updateBanner();
+});
+function nearestSlot(d) {
+  const m = d.getHours() * 60 + d.getMinutes();
+  let best = null, bd = Infinity;
+  for (const t of state.settings.times) {
+    const diff = Math.abs(toMin(t) - m);
+    if (diff <= SLOT_WINDOW_MIN && diff < bd) { best = t; bd = diff; }
+  }
+  return best;
+}
+function showResult(rec) {
+  const f = sum(rec.fatigue), h = sum(rec.hurry), fl = level(f), hl = level(h);
+  $("resScores").innerHTML = `
+    <div class="score lv${fl}"><div class="lab">疲労</div><div class="num">${f}<small>/6</small></div><div class="lv">${LV_ICONS[fl]} ${LV_NAMES[fl]}</div></div>
+    <div class="score lv${hl}"><div class="lab">焦り</div><div class="num">${h}<small>/6</small></div><div class="lv">${LV_ICONS[hl]} ${LV_NAMES[hl]}</div></div>`;
+  const a = adviceFor(fl, hl);
+  $("resAdvice").innerHTML = `<div class="advice lv${a.lv}"><b>${esc(a.title)}</b><ul>${a.items.map(i => `<li>${esc(i)}</li>`).join("")}</ul></div>`;
+  $("formView").style.display = "none";
+  $("resultView").style.display = "block";
+  haptic(a.lv === 2 ? [200, 100, 200] : a.lv === 1 ? 120 : 30);
+  window.scrollTo(0, 0);
+}
+function newCheck() {
+  ansF = [null, null, null]; ansH = [null, null, null]; $("note").value = "";
+  $("resultView").style.display = "none"; $("formView").style.display = "block";
+  renderQuestions(); window.scrollTo(0, 0);
+}
+
+// ---------- 一呼吸（30秒: 吸う4秒＋吐く6秒 ×3） ----------
+let breathTimer = null;
+function startBreath() {
+  const CYCLE = 10, TOTAL = 30, IN = 4;
+  const ov = $("breath"), c = $("breathCircle");
+  ov.classList.add("show");
+  const t0 = performance.now();
+  let lastPhase = "";
+  const tick = () => {
+    const el = (performance.now() - t0) / 1000;
+    if (el >= TOTAL) { stopBreath(true); return; }
+    const p = el % CYCLE;
+    let scale, word;
+    if (p < IN) { scale = 0.55 + 0.45 * (p / IN); word = "吸って…"; }
+    else { scale = 1 - 0.45 * ((p - IN) / (CYCLE - IN)); word = "ゆっくり吐いて…"; }
+    c.style.transform = `scale(${scale.toFixed(3)})`;
+    if (word !== lastPhase) { $("breathWord").textContent = word; lastPhase = word; haptic(20); }
+    $("breathRemain").textContent = "あと " + Math.ceil(TOTAL - el) + " 秒";
+    breathTimer = requestAnimationFrame(tick);
+  };
+  breathTimer = requestAnimationFrame(tick);
+}
+function stopBreath(done) {
+  cancelAnimationFrame(breathTimer);
+  $("breath").classList.remove("show");
+  if (done) { haptic([60, 60, 60]); toast("一呼吸できました。安全第一で再開を"); }
+}
+
+// ---------- 推移 ----------
+function slotRecord(date, slot) {
+  const rs = state.records.filter(r => r.date === date && r.slot === slot);
+  return rs.length ? rs[rs.length - 1] : null;
+}
+function pill(score, none) {
+  if (none) return `<span class="pill lvn">未</span>`;
+  const l = level(score);
+  return `<span class="pill lv${l}">${score}</span>`;
+}
+function renderTrend() {
+  const today = dateStr(new Date());
+  let rows = sortedTimes().map(t => {
+    const r = slotRecord(today, t);
+    return `<tr><td class="t">${t}</td><td>${r ? pill(sum(r.fatigue)) : pill(0, true)}</td><td>${r ? pill(sum(r.hurry)) : pill(0, true)}</td></tr>`;
+  }).join("");
+  const extra = state.records.filter(r => r.date === today && !r.slot);
+  rows += extra.map(r => `<tr><td class="t">${hhmm(new Date(r.ts))}<span class="muted">（臨時）</span></td><td>${pill(sum(r.fatigue))}</td><td>${pill(sum(r.hurry))}</td></tr>`).join("");
+  $("todayTable").innerHTML = `<tr><th style="text-align:left">時刻</th><th>疲労 /6</th><th>焦り /6</th></tr>` + rows;
+  renderChart();
+  renderHist();
+}
+function renderChart() {
+  const since = new Date(); since.setHours(0, 0, 0, 0); since.setDate(since.getDate() - 6);
+  const rs = state.records.filter(r => r.ts >= since.getTime()).sort((a, b) => a.ts - b.ts);
+  if (!rs.length) { $("chart").innerHTML = `<div class="muted" style="padding:16px 0">まだ記録がありません。チェックすると、ここに推移が出ます。</div>`; $("chartNote").textContent = ""; return; }
+  const W = 340, H = 190, L = 24, R = 8, T = 10, B = 28;
+  const n = rs.length, iw = W - L - R, ih = H - T - B;
+  const x = i => L + (n === 1 ? iw / 2 : iw * i / (n - 1));
+  const y = v => T + ih * (1 - v / 6);
+  let g = "";
+  for (let v = 0; v <= 6; v += 2) g += `<line x1="${L}" x2="${W - R}" y1="${y(v)}" y2="${y(v)}" stroke="#e1e7e4"/><text x="${L - 4}" y="${y(v) + 4}" font-size="10" text-anchor="end" fill="#66746d">${v}</text>`;
+  g += `<line x1="${L}" x2="${W - R}" y1="${y(state.settings.warn)}" y2="${y(state.settings.warn)}" stroke="#b57a00" stroke-dasharray="4 3"/>`;
+  g += `<line x1="${L}" x2="${W - R}" y1="${y(state.settings.danger)}" y2="${y(state.settings.danger)}" stroke="#c0392b" stroke-dasharray="4 3"/>`;
+  // 日付の区切りとラベル
+  let prev = "";
+  rs.forEach((r, i) => {
+    if (r.date !== prev) {
+      if (prev) g += `<line x1="${x(i) - (iw / Math.max(n - 1, 1)) / 2}" x2="${x(i) - (iw / Math.max(n - 1, 1)) / 2}" y1="${T}" y2="${T + ih}" stroke="#cfd8d4"/>`;
+      g += `<text x="${x(i)}" y="${H - 8}" font-size="10" fill="#66746d" text-anchor="start">${+r.date.slice(5, 7)}/${+r.date.slice(8)}</text>`;
+      prev = r.date;
+    }
+  });
+  const line = (arr, color) => {
+    const pts = rs.map((r, i) => `${x(i).toFixed(1)},${y(sum(r[arr])).toFixed(1)}`).join(" ");
+    return `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round"/>` +
+      rs.map((r, i) => `<circle cx="${x(i).toFixed(1)}" cy="${y(sum(r[arr])).toFixed(1)}" r="3.5" fill="${color}"/>`).join("");
+  };
+  g += line("fatigue", "#2f5f8f") + line("hurry", "#d2691e");
+  $("chart").innerHTML = `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="疲労と焦りの推移">${g}</svg>`;
+  $("chartNote").textContent = "横軸は記録の順番（日付は各日の最初の記録の位置）。点線はしきい値です。";
+}
+function renderHist() {
+  const rs = state.records.slice().sort((a, b) => b.ts - a.ts).slice(0, 60);
+  if (!rs.length) { $("histList").innerHTML = `<div class="muted">記録はまだありません。</div>`; return; }
+  $("histList").innerHTML = rs.map(r => {
+    const d = new Date(r.ts), f = sum(r.fatigue), h = sum(r.hurry);
+    return `<div class="hist">
+      <div class="when">${+r.date.slice(5, 7)}/${+r.date.slice(8)} ${hhmm(d)}${r.slot ? `<span class="muted">（${r.slot}枠）</span>` : `<span class="muted">（臨時）</span>`}${r.note ? `<div class="muted">${esc(r.note)}</div>` : ""}</div>
+      <span class="pill lv${level(f)}">疲${f}</span><span class="pill lv${level(h)}">焦${h}</span>
+      <button class="del" aria-label="削除" onclick="delRecord(${r.id})">🗑</button></div>`;
+  }).join("");
+}
+function delRecord(id) {
+  if (!confirm("この記録を削除しますか？")) return;
+  state.records = state.records.filter(r => r.id !== id);
+  save(); renderTrend(); updateBanner();
+}
+
+// ---------- 設定 ----------
+function renderSettings() {
+  $("timeList").innerHTML = state.settings.times.map((t, i) => `
+    <div class="timeRow"><input type="time" value="${t}" data-i="${i}" onchange="changeTime(${i}, this.value)">
+    <button class="btn sub sm" onclick="removeTime(${i})" aria-label="削除">削除</button></div>`).join("");
+  $("thWarn").value = state.settings.warn;
+  $("thDanger").value = state.settings.danger;
+  updateNotifyState();
+}
+function changeTime(i, v) {
+  if (!/^\d\d:\d\d$/.test(v)) return;
+  state.settings.times[i] = v; save();
+}
+function addTime() { state.settings.times.push("09:00"); save(); renderSettings(); }
+function removeTime(i) {
+  if (state.settings.times.length <= 1) { toast("最低1つは必要です"); return; }
+  state.settings.times.splice(i, 1); save(); renderSettings();
+}
+function onThreshold() {
+  let w = parseInt($("thWarn").value, 10), d = parseInt($("thDanger").value, 10);
+  if (!(w >= 1 && w <= 6) || !(d >= 1 && d <= 6)) return;
+  if (d < w) { toast("危険は注意以上にしてください"); return; }
+  state.settings.warn = w; state.settings.danger = d; save();
+}
+$("thWarn").addEventListener("change", onThreshold);
+$("thDanger").addEventListener("change", onThreshold);
+
+// ---------- 通知 ----------
+function updateNotifyState() {
+  let s = "";
+  if (!("Notification" in window)) s = "このブラウザは通知に対応していません（画面表示と振動のみ）。iPhoneはホーム画面に追加すると通知が使えます。";
+  else if (Notification.permission === "granted") s = "通知: 許可済み（アプリが開いている/バックグラウンドの間に有効）";
+  else if (Notification.permission === "denied") s = "通知: 拒否されています。端末の設定から許可してください。";
+  else s = "通知: 未許可";
+  $("notifyState").textContent = s;
+}
+function askNotify() {
+  if (!("Notification" in window)) { updateNotifyState(); return; }
+  Notification.requestPermission().then(updateNotifyState);
+}
+function notify(title, body) {
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const opts = { body, icon: "icon-192.png", tag: "kokyuu-remind", renotify: true };
+  if (navigator.serviceWorker && navigator.serviceWorker.getRegistration) {
+    navigator.serviceWorker.getRegistration().then(r => { if (r) r.showNotification(title, opts); else new Notification(title, opts); }).catch(() => { try { new Notification(title, opts); } catch (e) {} });
+  } else { try { new Notification(title, opts); } catch (e) {} }
+}
+
+// リマインド: 起動中の時刻判定＋未記録枠の案内
+function checkReminders() {
+  const now = new Date(), today = dateStr(now), nowMin = now.getHours() * 60 + now.getMinutes();
+  $("clock").textContent = `${now.getMonth() + 1}月${now.getDate()}日 ${hhmm(now)}`;
+  // 古い発火記録を掃除
+  for (const k of Object.keys(state.fired)) if (!k.startsWith(today)) delete state.fired[k];
+  for (const t of sortedTimes()) {
+    const key = today + "_" + t;
+    // 設定時刻から10分以内に開いている/起動している場合のみ「いま」の通知
+    if (nowMin >= toMin(t) && nowMin < toMin(t) + 10 && !state.fired[key] && !slotRecord(today, t)) {
+      state.fired[key] = 1; save();
+      haptic([200, 100, 200, 100, 200]);
+      notify("一呼吸チェックの時間です", `${t} の枠：手を止めて、疲れと焦りを確認しましょう`);
+    }
+  }
+  updateBanner();
+}
+function pendingSlot() {
+  const now = new Date(), today = dateStr(now), nowMin = now.getHours() * 60 + now.getMinutes();
+  // すでに時刻を過ぎていて、窓（±60分）の範囲内で未記録の最も新しい枠
+  const cands = sortedTimes().filter(t => nowMin >= toMin(t) && nowMin - toMin(t) <= SLOT_WINDOW_MIN && !slotRecord(today, t));
+  return cands.length ? cands[cands.length - 1] : null;
+}
+function updateBanner() {
+  const s = pendingSlot(), b = $("banner");
+  if (s && $("resultView").style.display !== "block") {
+    b.innerHTML = `⏰ ${s} の一呼吸チェックがまだです。手を止めて、いまの自分を確認しましょう。`;
+    b.classList.add("show");
+  } else b.classList.remove("show");
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden) checkReminders(); });
+
+// ---------- .ics ----------
+function exportIcs() {
+  const now = new Date();
+  const stamp = now.getUTCFullYear() + pad(now.getUTCMonth() + 1) + pad(now.getUTCDate()) + "T" + pad(now.getUTCHours()) + pad(now.getUTCMinutes()) + pad(now.getUTCSeconds()) + "Z";
+  const d = now.getFullYear() + pad(now.getMonth() + 1) + pad(now.getDate());
+  const url = location.href.split("#")[0].replace(/[?].*$/, "");
+  const ev = sortedTimes().map(t => {
+    const [h, m] = t.split(":");
+    return ["BEGIN:VEVENT", `UID:kokyuu-${t.replace(":", "")}@kokyuu-app`, `DTSTAMP:${stamp}`,
+      `DTSTART:${d}T${h}${m}00`, "DURATION:PT5M", "RRULE:FREQ=DAILY",
+      "SUMMARY:一呼吸チェック（疲れ・焦りの確認）", `DESCRIPTION:手を止めて、疲れと焦りを確認しましょう。${/^https?:/.test(url) ? url : ""}`,
+      "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:一呼吸チェックの時間です", "TRIGGER:PT0M", "END:VALARM", "END:VEVENT"].join("\r\n");
+  });
+  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//kokyuu//JA", "CALSCALE:GREGORIAN", ...ev, "END:VCALENDAR"].join("\r\n") + "\r\n";
+  download("kokyuu-reminders.ics", ics, "text/calendar;charset=utf-8");
+  toast("保存しました。開いてカレンダーに追加してください");
+}
+
+// ---------- 出力 ----------
+function download(name, text, type) {
+  const blob = new Blob([text], { type });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function csvCell(v) { v = String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+function exportCsv() {
+  const head = ["日付", "時刻", "枠", "疲労合計", "疲労判定", "焦り合計", "焦り判定", ...Q_FATIGUE.map((q, i) => "疲" + (i + 1)), ...Q_HURRY.map((q, i) => "焦" + (i + 1)), "メモ"];
+  const lines = [head.map(csvCell).join(",")];
+  state.records.slice().sort((a, b) => a.ts - b.ts).forEach(r => {
+    const f = sum(r.fatigue), h = sum(r.hurry);
+    lines.push([r.date, hhmm(new Date(r.ts)), r.slot || "臨時", f, LV_NAMES[level(f)], h, LV_NAMES[level(h)], ...r.fatigue, ...r.hurry, r.note || ""].map(csvCell).join(","));
+  });
+  download("kokyuu-" + dateStr(new Date()) + ".csv", "\uFEFF" + lines.join("\r\n"), "text/csv;charset=utf-8");
+}
+function exportJson() { download("kokyuu-backup-" + dateStr(new Date()) + ".json", JSON.stringify(state, null, 1), "application/json"); }
+$("importFile").addEventListener("change", e => {
+  const f = e.target.files[0]; if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const s = JSON.parse(rd.result);
+      if (!s || !s.settings || !Array.isArray(s.records)) throw new Error("形式が違います");
+      if (!confirm("現在のデータを、バックアップの内容で置き換えますか？")) return;
+      localStorage.setItem(KEY, JSON.stringify(s)); state = load();
+      renderSettings(); renderTrend(); newCheck(); toast("復元しました");
+    } catch (err) { toast("復元できませんでした: " + err.message); }
+    e.target.value = "";
+  };
+  rd.readAsText(f);
+});
+function clearAll() {
+  if (!confirm("すべての記録を削除します。よろしいですか？（設定は残ります）")) return;
+  state.records = []; state.fired = {}; save(); renderTrend(); updateBanner(); toast("削除しました");
+}
+
+// ---------- 起動 ----------
+renderQuestions();
+checkReminders();
+setInterval(checkReminders, 20000);
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>
