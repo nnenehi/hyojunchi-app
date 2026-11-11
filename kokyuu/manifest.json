@@ -1,0 +1,14 @@
+{
+  "name": "一呼吸チェック",
+  "short_name": "一呼吸",
+  "description": "林業の作業の合間に、疲れと焦りを数タップで自己チェックして事故を防ぐアプリ",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f2f5f3",
+  "theme_color": "#1f4d44",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

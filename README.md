@@ -43,3 +43,4 @@ python -m http.server 8765 --directory hyojunchi-app
 ## 関連アプリ
 
 - [山受け 椪径級カウント](yamauke/README.md) — 皆伐の山受けで椪ごとの径級別本数をカウントするアプリ（`yamauke/` フォルダ）
+- [一呼吸チェック](kokyuu/README.md) — 作業の合間に疲れと焦りを数タップで自己チェックし、事故を防ぐアプリ（`kokyuu/` フォルダ）
